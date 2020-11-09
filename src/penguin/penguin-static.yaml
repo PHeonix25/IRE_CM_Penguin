@@ -1,0 +1,24 @@
+AWSTemplateFormatVersion: 2010-09-09
+Parameters:
+  PenguinEnvironment:
+    Type: "String"
+    Description: "The specified environment for this deployment"
+    Default: "cm_penguin_nonprod"
+    AllowedValues:
+      - cm_penguin_nonprod
+       cm_penguin_staging 
+       cm_penguin_training
+       cm_penguin_preprod
+       cm_penguin_prod
+  PenguinVpc:
+    Type: "String"
+    Description: "The VPC ID of the environment the app is deploying into."
+Resources:
+  PenguinDnsHostedZone:
+    Type: 'AWS::Route53::HostedZone'
+    Properties: 
+      
+  PenguinDnsAlbRecord:
+    Type: 'AWS::Route53::RecordSet'
+    Properties: 
+      
