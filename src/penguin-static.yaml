@@ -16,7 +16,7 @@ Parameters:
 Resources:
   PenguinDnsHostedZone:
     Type: 'AWS::Route53::HostedZone'
-    Properties: 
+    Properties:
       
   PenguinDnsAlbRecord:
     Type: 'AWS::Route53::RecordSet'

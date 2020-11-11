@@ -1,0 +1,93 @@
+AWSTemplateFormatVersion: 2010-09-09
+Parameters:
+  PenguinEnvironment:
+    Type: "String"
+    Description: "The specified environment for this deployment"
+    Default: "cm_penguin_nonprod"
+    AllowedValues:
+      - cm_penguin_nonprod
+      - cm_penguin_staging 
+      - cm_penguin_training
+      - cm_penguin_preprod
+      - cm_penguin_prod
+  PenguinApplicationName: 
+    Type: String
+    Default: !Join [ '-', !Ref PenguinEnvironment, "World"]
+  PenguinVpc:
+    Type: String
+    Description: "The VPC ID of the environment the app is deploying into."
+  
+  PenguinSubnetPublicIdA:
+    Type: String
+    Description: "The Subnet ID of Public Subnet A"
+  PenguinSubnetPublicIdB:
+    Type: String
+    Description: "The Subnet ID of Public Subnet B"
+
+  PenguinSubnetApplicationIdA:
+    Type: String
+    Description: "The Subnet ID of Application Subnet A"
+  PenguinSubnetApplicationIdB:
+    Type: String
+    Description: "The Subnet ID of Application Subnet B"
+  PenguinSubnetPaymentGatewaIdy:
+    Type: String
+    Description: "The Subnet ID of Payment Gateway Subnet"
+  
+  PenguinSubnetDatabaseIdA:
+    Type: String
+    Description: "The Subnet ID of Database Subnet A"
+  PenguinSubnetDatabaseIdB:
+    Type: String
+    Description: "The Subnet ID of Database Subnet B"
+Resources:
+
+  PenguinPublicAlbSecGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: Access rules and definitions for the Primary Penguin Public API ALB
+      GroupName: PenguinPublicAlbSecurityGroup
+      VpcId: 
+        Ref: PenguinVpc
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+  
+  PenguinApplicationSecGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: Access rules and definitions for Penguin Application Servers
+      GroupName: PenguinApplicationSecurityGroup
+      VpcId: 
+        Ref: PenguinVpc
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+
+  PenguinApiAlb:
+    Type: 'AWS::ElasticLoadBalancingV2::LoadBalancer'
+    Properties:
+      Type: "application"
+      IpAddressType: "ipv4"
+      Name: ""
+      SecurityGroups:
+        - ""
+      SubnetMappings:
+        - ""
+      Subnets:
+        - ""
+      
