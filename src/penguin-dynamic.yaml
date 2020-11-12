@@ -1,47 +1,107 @@
 AWSTemplateFormatVersion: 2010-09-09
 Parameters:
   PenguinEnvironment:
-    Type: "String"
-    Description: "The specified environment for this deployment"
-    Default: "cm_penguin_nonprod"
-    AllowedValues:
-      - cm_penguin_nonprod
-      - cm_penguin_staging 
-      - cm_penguin_training
-      - cm_penguin_preprod
-      - cm_penguin_prod
-  PenguinApplicationName: 
     Type: String
-    Default: !Join [ '-', !Ref PenguinEnvironment, "World"]
-  PenguinVpc:
+    Description: The specified environment for this deployment
+    Default: ire-cm-penguin-dev
+    AllowedValues:
+      - ire-cm-penguin-dev
+      - ire-cm-penguin-test2
+      - ire-cm-penguin-test3
+      - ire-cm-penguin-staging 
+      - ire-cm-penguin-training
+      - ire-cm-penguin-preprod
+      - ire-cm-penguin-prod
+  PenguinVpcId:
     Type: String
     Description: "The VPC ID of the environment the app is deploying into."
   
-  PenguinSubnetPublicIdA:
+  PenguinPublicSubnet1Az1:
     Type: String
     Description: "The Subnet ID of Public Subnet A"
-  PenguinSubnetPublicIdB:
+  PenguinPublicSubnet1Az2:
     Type: String
     Description: "The Subnet ID of Public Subnet B"
 
-  PenguinSubnetApplicationIdA:
+  PenguinPrivateSubnet1Az1:
     Type: String
     Description: "The Subnet ID of Application Subnet A"
-  PenguinSubnetApplicationIdB:
+  PenguinPrivateSubnet1Az2:
     Type: String
     Description: "The Subnet ID of Application Subnet B"
-  PenguinSubnetPaymentGatewaIdy:
-    Type: String
-    Description: "The Subnet ID of Payment Gateway Subnet"
   
-  PenguinSubnetDatabaseIdA:
+  PenguinPrivateSubnet2Az1:
     Type: String
     Description: "The Subnet ID of Database Subnet A"
-  PenguinSubnetDatabaseIdB:
+  PenguinPrivateSubnet2Az2:
     Type: String
     Description: "The Subnet ID of Database Subnet B"
 
-
+Mappings:
+  PenguinEnvironmentSettings:
+    ire-cm-penguin-dev:
+      EnvShortName: dev1
+      VpcCidr: 10.110.32.0/21
+      PublicSubnet1Az1: 10.110.32.0/25
+      PublicSubnet1Az2: 10.110.32.128/25
+      PrivateSubnet1Az1: 10.110.33.0/25
+      PrivateSubnet1Az2: 10.110.33.128/25
+      PrivateSubnet2Az1: 10.110.34.0/25
+      PrivateSubnet2Az2: 10.110.34.128/25
+    ire-cm-penguin-test2:
+      EnvShortName: test2
+      VpcCidr: 10.110.40.0/21
+      PublicSubnet1Az1: 10.110.40.0/25
+      PublicSubnet1Az2: 10.110.40.128/25
+      PrivateSubnet1Az1: 10.110.41.0/25
+      PrivateSubnet1Az2: 10.110.41.128/25
+      PrivateSubnet2Az1: 10.110.42.0/25
+      PrivateSubnet2Az2: 10.110.42.128/25
+    ire-cm-penguin-test3:
+      EnvShortName: test3
+      VpcCidr: 10.110.48.0/21
+      PublicSubnet1Az1: 10.110.48.0/25
+      PublicSubnet1Az2: 10.110.48.128/25
+      PrivateSubnet1Az1: 10.110.49.0/25
+      PrivateSubnet1Az2: 10.110.49.128/25
+      PrivateSubnet2Az1: 10.110.50.0/25
+      PrivateSubnet2Az2: 10.110.50.128/25
+    ire-cm-penguin-staging:
+      EnvShortName: staging
+      VpcCidr: 10.110.56.0/21
+      PublicSubnet1Az1: 10.110.56.0/25
+      PublicSubnet1Az2: 10.110.56.128/25
+      PrivateSubnet1Az1: 10.110.57.0/25
+      PrivateSubnet1Az2: 10.110.57.128/25
+      PrivateSubnet2Az1: 10.110.58.0/25
+      PrivateSubnet2Az2: 10.110.58.128/25
+    ire-cm-penguin-training:
+      EnvShortName: training
+      VpcCidr: 10.110.16.0/21
+      PublicSubnet1Az1: 10.110.16.0/25
+      PublicSubnet1Az2: 10.110.16.128/25
+      PrivateSubnet1Az1: 10.110.17.0/25
+      PrivateSubnet1Az2: 10.110.17.128/25
+      PrivateSubnet2Az1: 10.110.18.0/25
+      PrivateSubnet2Az2: 10.110.18.128/25
+    ire-cm-penguin-preprod:
+      EnvShortName: preprod
+      VpcCidr: 10.110.8.0/21
+      PublicSubnet1Az1: 10.110.8.0/25
+      PublicSubnet1Az2: 10.110.8.128/25
+      PrivateSubnet1Az1: 10.110.9.0/25
+      PrivateSubnet1Az2: 10.110.9.128/25
+      PrivateSubnet2Az1: 10.110.10.0/25
+      PrivateSubnet2Az2: 10.110.10.128/25
+    ire-cm-penguin-prod:
+      EnvShortName: prod
+      VpcCidr: 10.110.0.0/21
+      PublicSubnet1Az1: 10.110.0.0/25
+      PublicSubnet1Az2: 10.110.0.128/25
+      PrivateSubnet1Az1: 10.110.1.0/25
+      PrivateSubnet1Az2: 10.110.1.128/25
+      PrivateSubnet2Az1: 10.110.2.0/25
+      PrivateSubnet2Az2: 10.110.2.128/25
 
 Resources:
   PenguinPublicAlbSecGroup:

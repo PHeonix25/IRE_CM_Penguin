@@ -3,15 +3,15 @@ Parameters:
   PenguinEnvironment:
     Type: String
     Description: The specified environment for this deployment
-    Default: cm_penguin_dev
+    Default: ire-cm-penguin-dev
     AllowedValues:
-      - cm_penguin_dev
-      - cm_penguin_test1
-      - cm_penguin_test2
-      - cm_penguin_staging 
-      - cm_penguin_training
-      - cm_penguin_preprod
-      - cm_penguin_prod
+      - ire-cm-penguin-dev
+      - ire-cm-penguin-test2
+      - ire-cm-penguin-test3
+      - ire-cm-penguin-staging 
+      - ire-cm-penguin-training
+      - ire-cm-penguin-preprod
+      - ire-cm-penguin-prod
   PenguinVpcId:
     Type: String
     Description: The VPC ID of the environment the app is deploying into.
@@ -22,19 +22,19 @@ Parameters:
 
 Mappings:
   PenguinEnvironmentSettings:
-    cm_penguin_dev:
+    ire-cm-penguin-dev:
       EnvShortName: dev1
-    cm_penguin_test1:
+    ire-cm-penguin-test2:
       EnvShortName: test2
-    cm_penguin_test2:
-      EnvShortName: test1
-    cm_penguin_staging:
+    ire-cm-penguin-test3:
+      EnvShortName: test3
+    ire-cm-penguin-staging:
       EnvShortName: staging
-    cm_penguin_training:
+    ire-cm-penguin-training:
       EnvShortName: training
-    cm_penguin_preprod:
+    ire-cm-penguin-preprod:
       EnvShortName: preprod
-    cm_penguin_prod:
+    ire-cm-penguin-prod:
       EnvShortName: prod
 
 Resources:
