@@ -40,8 +40,10 @@ Parameters:
   PenguinSubnetDatabaseIdB:
     Type: String
     Description: "The Subnet ID of Database Subnet B"
-Resources:
 
+
+
+Resources:
   PenguinPublicAlbSecGroup:
     Type: 'AWS::EC2::SecurityGroup'
     Properties:
@@ -71,12 +73,8 @@ Resources:
         - IpProtocol: tcp
           FromPort: 443
           ToPort: 443
-          CidrIp: 0.0.0.0/0
-      SecurityGroupEgress:
-        - IpProtocol: tcp
-          FromPort: 443
-          ToPort: 443
-          CidrIp: 0.0.0.0/0
+          SourceSecurityGroup:
+            Ref: PenguinPublicAlbSecGroup
 
   PenguinApiAlb:
     Type: 'AWS::ElasticLoadBalancingV2::LoadBalancer'

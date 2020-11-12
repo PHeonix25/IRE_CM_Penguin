@@ -1,24 +1,58 @@
 AWSTemplateFormatVersion: 2010-09-09
 Parameters:
   PenguinEnvironment:
-    Type: "String"
-    Description: "The specified environment for this deployment"
-    Default: "cm_penguin_nonprod"
+    Type: String
+    Description: The specified environment for this deployment
+    Default: cm_penguin_dev
     AllowedValues:
-      - cm_penguin_nonprod
-       cm_penguin_staging 
-       cm_penguin_training
-       cm_penguin_preprod
-       cm_penguin_prod
-  PenguinVpc:
-    Type: "String"
-    Description: "The VPC ID of the environment the app is deploying into."
+      - cm_penguin_dev
+      - cm_penguin_test1
+      - cm_penguin_test2
+      - cm_penguin_staging 
+      - cm_penguin_training
+      - cm_penguin_preprod
+      - cm_penguin_prod
+  PenguinVpcId:
+    Type: String
+    Description: The VPC ID of the environment the app is deploying into.
+  PenguinVpcRegion:
+    Type: String
+    Description: The VPC Region of the environment
+    Default: eu-west-1
+
+Mappings:
+  PenguinEnvironmentSettings:
+    cm_penguin_dev:
+      EnvShortName: dev1
+    cm_penguin_test1:
+      EnvShortName: test2
+    cm_penguin_test2:
+      EnvShortName: test1
+    cm_penguin_staging:
+      EnvShortName: staging
+    cm_penguin_training:
+      EnvShortName: training
+    cm_penguin_preprod:
+      EnvShortName: preprod
+    cm_penguin_prod:
+      EnvShortName: prod
+
 Resources:
   PenguinDnsHostedZone:
     Type: 'AWS::Route53::HostedZone'
     Properties:
-      
-  PenguinDnsAlbRecord:
-    Type: 'AWS::Route53::RecordSet'
-    Properties: 
-      
+      HostedZoneConfig:
+        Comment: IRE-CM-Penguin AWS HostedZone
+      Name: !Join ['.', [!FindInMap [PenguinEnvironmentSettings, !Ref PenguinEnvironment, EnvShortName], 'penguin', 'aws-int', 'covermore.co.uk']]
+      VPCs:
+        -
+          VPCId: !Ref PenguinVpcId
+          VPCRegion: !Ref PenguinVpcRegion
+
+Outputs:
+  PenguinDnsHostedZoneNsRecords:
+    Description: The Environment HostedZone NS Server setting values for parent delegation
+    Value: !Join [ ',', !GetAtt PenguinDnsHostedZone.NameServers]
+  PenguinDnsHostedZoneId:
+    Description: "The Environment HostedZone record ID"
+    Value: !GetAtt PenguinDnsHostedZone.Id
