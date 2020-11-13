@@ -16,6 +16,16 @@ Parameters:
     Type: String
     Description: "The VPC ID of the environment the app is deploying into."
   
+  PenguinApiIamInstanceProfile:
+    Type: String
+    Description: "The ARN of the IAM Instance Profile to be assigned to this instance"
+  
+  PenguinApiAmiId:
+    Type: String
+
+  PenguinKmsCmkArn:
+    Type: String
+
   PenguinPublicSubnet1Az1:
     Type: String
     Description: "The Subnet ID of Public Subnet A"
@@ -48,6 +58,7 @@ Mappings:
       PrivateSubnet1Az2: 10.110.33.128/25
       PrivateSubnet2Az1: 10.110.34.0/25
       PrivateSubnet2Az2: 10.110.34.128/25
+      PenguinEc2InstanceSize: t3.medium
     ire-cm-penguin-test2:
       EnvShortName: test2
       VpcCidr: 10.110.40.0/21
@@ -57,6 +68,7 @@ Mappings:
       PrivateSubnet1Az2: 10.110.41.128/25
       PrivateSubnet2Az1: 10.110.42.0/25
       PrivateSubnet2Az2: 10.110.42.128/25
+      PenguinEc2InstanceSize: t3.medium
     ire-cm-penguin-test3:
       EnvShortName: test3
       VpcCidr: 10.110.48.0/21
@@ -66,6 +78,7 @@ Mappings:
       PrivateSubnet1Az2: 10.110.49.128/25
       PrivateSubnet2Az1: 10.110.50.0/25
       PrivateSubnet2Az2: 10.110.50.128/25
+      PenguinEc2InstanceSize: t3.medium
     ire-cm-penguin-staging:
       EnvShortName: staging
       VpcCidr: 10.110.56.0/21
@@ -75,6 +88,7 @@ Mappings:
       PrivateSubnet1Az2: 10.110.57.128/25
       PrivateSubnet2Az1: 10.110.58.0/25
       PrivateSubnet2Az2: 10.110.58.128/25
+      PenguinEc2InstanceSize: t3.medium
     ire-cm-penguin-training:
       EnvShortName: training
       VpcCidr: 10.110.16.0/21
@@ -84,6 +98,7 @@ Mappings:
       PrivateSubnet1Az2: 10.110.17.128/25
       PrivateSubnet2Az1: 10.110.18.0/25
       PrivateSubnet2Az2: 10.110.18.128/25
+      PenguinEc2InstanceSize: t3.medium
     ire-cm-penguin-preprod:
       EnvShortName: preprod
       VpcCidr: 10.110.8.0/21
@@ -93,6 +108,7 @@ Mappings:
       PrivateSubnet1Az2: 10.110.9.128/25
       PrivateSubnet2Az1: 10.110.10.0/25
       PrivateSubnet2Az2: 10.110.10.128/25
+      PenguinEc2InstanceSize: m5.large
     ire-cm-penguin-prod:
       EnvShortName: prod
       VpcCidr: 10.110.0.0/21
@@ -102,6 +118,7 @@ Mappings:
       PrivateSubnet1Az2: 10.110.1.128/25
       PrivateSubnet2Az1: 10.110.2.0/25
       PrivateSubnet2Az2: 10.110.2.128/25
+      PenguinEc2InstanceSize: m5.large
 
 Resources:
   PenguinPublicAlbSecGroup:
@@ -148,4 +165,34 @@ Resources:
         - ""
       Subnets:
         - ""
-      
+  PenguinApiLaunchTemplate:
+    Type: 'AWS::EC2::LaunchTemplate'
+    Properties:
+      LaunchTemplateName: "IRE-CM-Penguin-API"
+      LaunchTemplateData:
+        ImageId: PenguinApiAmiId
+        InstanceType: !FindInMap [PenguinEnvironmentSettings, !Ref PenguinEnvironment, PenguinEc2InstanceSize]
+        IamInstanceProfile:
+          Arn: !Ref PenguinApiIamInstanceProfile
+        NetworkInterfaces:
+          - DeviceIndex: 0
+            AssociatePublicIpAddress: false
+            DeleteOnTermination: true
+            Groups:
+              - !Ref PenguinPublicAlbSecGroup
+        TagSpecifications:
+          - ResourceType: instance
+            Tags:
+              - Key: Name
+                Value: IRE-CM-Penguin-API
+        BlockDeviceMappings:
+          - DeviceName: /dev/sda1
+            Ebs:
+              VolumeSize: 100
+              VolumeType: gp2
+              DeleteOnTermination: true
+              Encrypted: true
+              KmsKeyId: !Ref PenguinKmsCmkArn
+        UserData: !Base64 
+          'Fn::Sub': >
+            %POWERSHELL_SCRIPT%
