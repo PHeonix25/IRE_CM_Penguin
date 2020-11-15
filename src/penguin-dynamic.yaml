@@ -1,5 +1,6 @@
 AWSTemplateFormatVersion: 2010-09-09
 Parameters:
+
   PenguinEnvironment:
     Type: String
     Description: The specified environment for this deployment
@@ -33,17 +34,17 @@ Parameters:
     Type: String
     Description: "The Subnet ID of Public Subnet B"
 
-  PenguinPrivateSubnet1Az1:
+  PenguinApplicationSubnetAz1:
     Type: String
     Description: "The Subnet ID of Application Subnet A"
-  PenguinPrivateSubnet1Az2:
+  PenguinApplicationSubnetAz2:
     Type: String
     Description: "The Subnet ID of Application Subnet B"
   
-  PenguinPrivateSubnet2Az1:
+  PenguinDatabaseSubnetAz1:
     Type: String
     Description: "The Subnet ID of Database Subnet A"
-  PenguinPrivateSubnet2Az2:
+  PenguinDatabaseSubnetAz2:
     Type: String
     Description: "The Subnet ID of Database Subnet B"
 
@@ -54,71 +55,98 @@ Mappings:
       VpcCidr: 10.110.32.0/21
       PublicSubnet1Az1: 10.110.32.0/25
       PublicSubnet1Az2: 10.110.32.128/25
-      PrivateSubnet1Az1: 10.110.33.0/25
-      PrivateSubnet1Az2: 10.110.33.128/25
-      PrivateSubnet2Az1: 10.110.34.0/25
-      PrivateSubnet2Az2: 10.110.34.128/25
+      ApplicationSubnetAz1: 10.110.33.0/25
+      ApplicationSubnetAz2: 10.110.33.128/25
+      DatabaseSubnetAz1: 10.110.34.0/25
+      DatabaseSubnetAz2: 10.110.34.128/25
       PenguinEc2InstanceSize: t3.medium
+      ScalingGroupMin: 1
+      ScalingGroupMax: 1
+      LogRetentionInDays: 7
+
     ire-cm-penguin-test2:
       EnvShortName: test2
       VpcCidr: 10.110.40.0/21
       PublicSubnet1Az1: 10.110.40.0/25
       PublicSubnet1Az2: 10.110.40.128/25
-      PrivateSubnet1Az1: 10.110.41.0/25
-      PrivateSubnet1Az2: 10.110.41.128/25
-      PrivateSubnet2Az1: 10.110.42.0/25
-      PrivateSubnet2Az2: 10.110.42.128/25
+      ApplicationSubnetAz1: 10.110.41.0/25
+      ApplicationSubnetAz2: 10.110.41.128/25
+      DatabaseSubnetAz1: 10.110.42.0/25
+      DatabaseSubnetAz2: 10.110.42.128/25
       PenguinEc2InstanceSize: t3.medium
+      ScalingGroupMin: 1
+      ScalingGroupMax: 1
+      LogRetentionInDays: 7
+      
     ire-cm-penguin-test3:
       EnvShortName: test3
       VpcCidr: 10.110.48.0/21
       PublicSubnet1Az1: 10.110.48.0/25
       PublicSubnet1Az2: 10.110.48.128/25
-      PrivateSubnet1Az1: 10.110.49.0/25
-      PrivateSubnet1Az2: 10.110.49.128/25
-      PrivateSubnet2Az1: 10.110.50.0/25
-      PrivateSubnet2Az2: 10.110.50.128/25
+      ApplicationSubnetAz1: 10.110.49.0/25
+      ApplicationSubnetAz2: 10.110.49.128/25
+      DatabaseSubnetAz1: 10.110.50.0/25
+      DatabaseSubnetAz2: 10.110.50.128/25
       PenguinEc2InstanceSize: t3.medium
+      ScalingGroupMin: 1
+      ScalingGroupMax: 1
+      LogRetentionInDays: 7
+
     ire-cm-penguin-staging:
       EnvShortName: staging
       VpcCidr: 10.110.56.0/21
       PublicSubnet1Az1: 10.110.56.0/25
       PublicSubnet1Az2: 10.110.56.128/25
-      PrivateSubnet1Az1: 10.110.57.0/25
-      PrivateSubnet1Az2: 10.110.57.128/25
-      PrivateSubnet2Az1: 10.110.58.0/25
-      PrivateSubnet2Az2: 10.110.58.128/25
+      ApplicationSubnetAz1: 10.110.57.0/25
+      ApplicationSubnetAz2: 10.110.57.128/25
+      DatabaseSubnetAz1: 10.110.58.0/25
+      DatabaseSubnetAz2: 10.110.58.128/25
       PenguinEc2InstanceSize: t3.medium
+      ScalingGroupMin: 1
+      ScalingGroupMax: 1
+      LogRetentionInDays: 7
+
     ire-cm-penguin-training:
       EnvShortName: training
       VpcCidr: 10.110.16.0/21
       PublicSubnet1Az1: 10.110.16.0/25
       PublicSubnet1Az2: 10.110.16.128/25
-      PrivateSubnet1Az1: 10.110.17.0/25
-      PrivateSubnet1Az2: 10.110.17.128/25
-      PrivateSubnet2Az1: 10.110.18.0/25
-      PrivateSubnet2Az2: 10.110.18.128/25
+      ApplicationSubnetAz1: 10.110.17.0/25
+      ApplicationSubnetAz2: 10.110.17.128/25
+      DatabaseSubnetAz1: 10.110.18.0/25
+      DatabaseSubnetAz2: 10.110.18.128/25
       PenguinEc2InstanceSize: t3.medium
+      ScalingGroupMin: 1
+      ScalingGroupMax: 1
+      LogRetentionInDays: 7
+
     ire-cm-penguin-preprod:
       EnvShortName: preprod
       VpcCidr: 10.110.8.0/21
       PublicSubnet1Az1: 10.110.8.0/25
       PublicSubnet1Az2: 10.110.8.128/25
-      PrivateSubnet1Az1: 10.110.9.0/25
-      PrivateSubnet1Az2: 10.110.9.128/25
-      PrivateSubnet2Az1: 10.110.10.0/25
-      PrivateSubnet2Az2: 10.110.10.128/25
+      ApplicationSubnetAz1: 10.110.9.0/25
+      ApplicationSubnetAz2: 10.110.9.128/25
+      DatabaseSubnetAz1: 10.110.10.0/25
+      DatabaseSubnetAz2: 10.110.10.128/25
       PenguinEc2InstanceSize: m5.large
+      ScalingGroupMin: 2
+      ScalingGroupMax: 2
+      LogRetentionInDays: 7
+
     ire-cm-penguin-prod:
       EnvShortName: prod
       VpcCidr: 10.110.0.0/21
       PublicSubnet1Az1: 10.110.0.0/25
       PublicSubnet1Az2: 10.110.0.128/25
-      PrivateSubnet1Az1: 10.110.1.0/25
-      PrivateSubnet1Az2: 10.110.1.128/25
-      PrivateSubnet2Az1: 10.110.2.0/25
-      PrivateSubnet2Az2: 10.110.2.128/25
+      ApplicationSubnetAz1: 10.110.1.0/25
+      ApplicationSubnetAz2: 10.110.1.128/25
+      DatabaseSubnetAz1: 10.110.2.0/25
+      DatabaseSubnetAz2: 10.110.2.128/25
       PenguinEc2InstanceSize: m5.large
+      ScalingGroupMin: 3
+      ScalingGroupMax: 5
+      LogRetentionInDays: 7
 
 Resources:
   PenguinPublicAlbSecGroup:
@@ -126,8 +154,7 @@ Resources:
     Properties:
       GroupDescription: Access rules and definitions for the Primary Penguin Public API ALB
       GroupName: PenguinPublicAlbSecurityGroup
-      VpcId: 
-        Ref: PenguinVpc
+      VpcId: !Ref PenguinVpcId
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 443
@@ -144,14 +171,12 @@ Resources:
     Properties:
       GroupDescription: Access rules and definitions for Penguin Application Servers
       GroupName: PenguinApplicationSecurityGroup
-      VpcId: 
-        Ref: PenguinVpc
+      VpcId: !Ref PenguinVpcId
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 443
           ToPort: 443
-          SourceSecurityGroup:
-            Ref: PenguinPublicAlbSecGroup
+          SourceSecurityGroupId: !GetAtt [PenguinPublicAlbSecGroup, GroupId]
 
   PenguinApiAlb:
     Type: 'AWS::ElasticLoadBalancingV2::LoadBalancer'
@@ -160,17 +185,17 @@ Resources:
       IpAddressType: "ipv4"
       Name: ""
       SecurityGroups:
-        - ""
-      SubnetMappings:
-        - ""
+        - PenguinPublicAlbSecGroup
       Subnets:
-        - ""
+        - !Ref PenguinPublicSubnet1Az1
+        - !Ref PenguinPublicSubnet1Az2
+  
   PenguinApiLaunchTemplate:
     Type: 'AWS::EC2::LaunchTemplate'
     Properties:
       LaunchTemplateName: "IRE-CM-Penguin-API"
       LaunchTemplateData:
-        ImageId: PenguinApiAmiId
+        ImageId: !Ref PenguinApiAmiId
         InstanceType: !FindInMap [PenguinEnvironmentSettings, !Ref PenguinEnvironment, PenguinEc2InstanceSize]
         IamInstanceProfile:
           Arn: !Ref PenguinApiIamInstanceProfile
@@ -196,3 +221,141 @@ Resources:
         UserData: !Base64 
           'Fn::Sub': >
             %POWERSHELL_SCRIPT%
+
+  TomcatAccessLogGroup:
+    Type: 'AWS::Logs::LogGroup'
+    Properties:
+      LogGroupName: !Sub 'customer-penguin-${PenguinEnvironment}-log-group-name'
+      RetentionInDays: !FindInMap [PenguinEnvironmentSettings, !Ref PenguinEnvironment, LogRetentionInDays]
+  
+  PenguinApplicationScalingGroup:
+    Type: 'AWS::AutoScaling::AutoScalingGroup'
+    DependsOn:
+      - LogGroups
+    CreationPolicy:
+      ResourceSignal:
+        Timeout: PT15M
+        Count: !FindInMap [PenguinEnvironmentSettings, !Ref PenguinEnvironment, ScalingGroupMin]
+    UpdatePolicy:
+      AutoScalingRollingUpdate:
+        MaxBatchSize: 1
+        MinInstancesInService: 1
+        PauseTime: PT15M
+        WaitOnResourceSignals: true
+    Properties:
+      VPCZoneIdentifier:
+        - !Ref PenguinApplicationSubnetAz1
+        - !Ref PenguinApplicationSubnetAz2
+      HealthCheckGracePeriod: 300
+      HealthCheckType: EC2
+      LaunchTemplate:
+        LaunchTemplateId: !Ref PenguinApiLaunchTemplate
+        Version: !GetAtt [PenguinApiLaunchTemplate, LatestVersionNumber]
+      MinSize: !FindInMap [PenguinEnvironmentSettings, !Ref PenguinEnvironment, ScalingGroupMin]
+      MaxSize: !FindInMap [PenguinEnvironmentSettings, !Ref PenguinEnvironment, ScalingGroupMax]
+      TargetGroupARNs:
+        - !Ref PenguinApiAlbTargetGroup
+      Tags:
+        - Key: Name
+          Value: PenguinApiApplicationServer
+          PropagateAtLaunch: true
+        - Key: Backup
+          Value: 'false'
+          PropagateAtLaunch: true
+        - Key: Role
+          Value: AppServer
+          PropagateAtLaunch: true
+
+  ScalingPolicy:
+    Type: 'AWS::AutoScaling::ScalingPolicy'
+    Properties:
+      AutoScalingGroupName: !Ref PenguinApplicationScalingGroup
+      PolicyType: TargetTrackingScaling
+      TargetTrackingConfiguration:
+        PredefinedMetricSpecification:
+          PredefinedMetricType: ASGAverageCPUUtilization
+        TargetValue: 75
+
+  PenguinApiAlbTargetGroup:
+    Type: 'AWS::ElasticLoadBalancingV2::TargetGroup'
+    Properties:
+      Name: Penguin-Api-Application-Servers
+      HealthCheckIntervalSeconds: 30
+      HealthCheckPath: /health.html
+      HealthCheckPort: '443'
+      HealthCheckProtocol: HTTPS
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 3
+      Port: 443
+      Protocol: HTTPS
+      Matcher:
+        HttpCode: '200'
+      UnhealthyThresholdCount: 5
+      TargetGroupAttributes:
+        - Key: stickiness.enabled
+          Value: 'true'
+      VpcId: !Ref PenguinVpcId
+      Tags:
+        - Key: Name
+          Value: Penguin-Api-Application-Servers
+  
+  ALBListener:
+    Type: 'AWS::ElasticLoadBalancingV2::Listener'
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref PenguinApiAlbTargetGroup
+      LoadBalancerArn: !Ref PenguinApiAlb
+      Port: 443
+      Protocol: HTTPS
+      SslPolicy: ELBSecurityPolicy-2016-08
+      Certificates:
+        - CertificateArn: !Ref PenguinKmsCmkArn
+
+  PenguinB2bLogGroup:
+    Type: 'AWS::Logs::LogGroup'
+    Properties:
+      LogGroupName: !Sub 'customer-penguin-${PenguinEnvironment}-b2b_reporting-logs'
+      RetentionInDays: !FindInMap [PenguinEnvironmentSettings, !Ref PenguinEnvironment, LogRetentionInDays]
+
+  PenguinMsadLogGroup:
+    Type: 'AWS::Logs::LogGroup'
+    Properties:
+      LogGroupName: !Sub 'customer-penguin-${PenguinEnvironment}-msad-logs'
+      RetentionInDays: !FindInMap [PenguinEnvironmentSettings, !Ref PenguinEnvironment, LogRetentionInDays]
+
+  PenguinPaymentGatewayLogGroup:
+    Type: 'AWS::Logs::LogGroup'
+    Properties:
+      LogGroupName: !Sub 'customer-penguin-${PenguinEnvironment}-paymentgateway-logs'
+      RetentionInDays: !FindInMap [PenguinEnvironmentSettings, !Ref PenguinEnvironment, LogRetentionInDays]
+
+  PenguinWebLogGroup:
+    Type: 'AWS::Logs::LogGroup'
+    Properties:
+      LogGroupName: !Sub 'customer-penguin-${PenguinEnvironment}-web-log'
+      RetentionInDays: !FindInMap [PenguinEnvironmentSettings, !Ref PenguinEnvironment, LogRetentionInDays]
+
+  PenguinWebErrorLogGroup:
+    Type: 'AWS::Logs::LogGroup'
+    Properties:
+      LogGroupName: !Sub 'customer-penguin-${PenguinEnvironment}-web_error-log'
+      RetentionInDays: !FindInMap [PenguinEnvironmentSettings, !Ref PenguinEnvironment, LogRetentionInDays]
+
+  PenguinWebInfoLogGroup:
+    Type: 'AWS::Logs::LogGroup'
+    Properties:
+      LogGroupName: !Sub 'customer-penguin-${PenguinEnvironment}-web_info-log'
+      RetentionInDays: !FindInMap [PenguinEnvironmentSettings, !Ref PenguinEnvironment, LogRetentionInDays]
+
+  PenguinWebB2cLogGroup:
+    Type: 'AWS::Logs::LogGroup'
+    Properties:
+      LogGroupName: !Sub 'customer-penguin-${PenguinEnvironment}-web_b2c-log'
+      RetentionInDays: !FindInMap [PenguinEnvironmentSettings, !Ref PenguinEnvironment, LogRetentionInDays]
+
+  PenguinWebOtherLogGroup:
+    Type: 'AWS::Logs::LogGroup'
+    Properties:
+      LogGroupName: !Sub 'customer-penguin-${PenguinEnvironment}-web_other-log'
+      RetentionInDays: !FindInMap [PenguinEnvironmentSettings, !Ref PenguinEnvironment, LogRetentionInDays]
