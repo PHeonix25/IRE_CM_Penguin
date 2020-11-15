@@ -7,6 +7,8 @@ import argparse
 parser = argparse.ArgumentParser(description="Create CoverMore Penguin Application CloudWatch Logs agent config file.")
 parser.add_argument('-e', '--environment', type=str, help='The environment to run the script in', default='ire-cm-penguin-dev',
     choices=['ire-cm-penguin-dev','ire-cm-penguin-test2','ire-cm-penguin-test3','ire-cm-penguin-staging','ire-cm-penguin-training','ire-cm-penguin-preprod','ire-cm-penguin-prod'])
+parser.add_argument('-f', '--file', help="CloudWatch target csv file to read from.", default="./config/logs.csv")
+parser.add_argument('-o', '--output', help="CloudWatch target json config file to output.", default="./src/cw_logs.json")
 args = parser.parse_args()
 
 cwConfig = {
@@ -19,7 +21,7 @@ cwConfig = {
     }
 }
 
-with open('./config/logs.csv', 'rt', encoding='utf-8-sig') as LogSource:
+with open(args.file, 'rt', encoding='utf-8-sig') as LogSource:
     reader = csv.reader(LogSource)
     for row in reader:
         cwConfig['logs']['logs_collected']['files']['collect_list'].append({
@@ -29,5 +31,5 @@ with open('./config/logs.csv', 'rt', encoding='utf-8-sig') as LogSource:
             "timestamp_format": "%b %d %H:%M:%S"
         })
 
-with open('./src/cw_logs.json', 'w') as writeFile:
+with open(args.output, 'w') as writeFile:
     json.dump(cwConfig, writeFile)

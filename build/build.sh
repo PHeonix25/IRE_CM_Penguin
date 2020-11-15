@@ -1,41 +1,22 @@
 #!/bin/bash
 
-LOG_FILE="./src/cloudwatch_logs.json"
+# Setup Params
+CW_CONFIG="./src/cw_logs.json"
+LOG_TARGETS="./config/logs.csv"
+PENGUIN_ENVIRONMENT='ire-cm-penguin-dev'
 
-cat  <<EOM >$LOG_FILE
-{
-    "logs": {
-        "logs_collected": {
-            "files": {
-                "collect_list": [
-EOM
+# Create Penguin CW Logs Agent config file
+python3 ./build/generate-cw-config.py -o $CW_CONFIG -f $LOG_TARGETS -e $PENGUIN_ENVIRONMENT
 
-# Convert logs.csv to json clod-watch log config
-LOG_SOURCE=./src/logs.csv
-OLDIFS=$IFS
-IFS=","
-[ ! -f $LOG_SOURCE ] && { echo "$LOG_SOURCE file was not found"; exit 99; }
-while read path type group
-do
-    PARSED_PATH=$(echo $path | jq -aR)
-    echo "$PARSED_PATH - $type - $group"
-#     cat  <<EOM >$LOG_FILE
-#                     {
-#                         "file_path": "$PARSED_PATH",
-#                         "log_group_name": "{instance_id}",
-#                         "log_stream_name": "customer-penguin-$group-logs",
-#                         "timestamp_format": "%b %d %H:%M:%S"
-#                     }
-# EOM
-done < $LOG_SOURCE
+# Lint
+# cfn-lint -a ./ams_lint -t ./src/*.yaml
 
-cat  <<EOM >$LOG_FILE
-                ]
-            }
-        }
-    }
-}
-EOM
+# Nag
+# cfn-nag ./src/*.yaml
 
-# First we lint
-# cfn-lint -a ./ams_lint -t ../src/*.yaml
+# Transform yaml -> json
+
+# Validate Json
+
+# S3 copy to target
+

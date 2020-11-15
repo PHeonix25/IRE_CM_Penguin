@@ -1,0 +1,24 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "EC2toretriveParamsfromSystemManager",
+            "Action": [
+                "ssm:GetParameter",
+                "ssm:GetParameters"
+            ],
+            "Resource": "arn:aws:ssm:ap-southeast-2:<ACCOUNT-ID>:parameter/ire-cm-peguin-dev-*",
+            "Effect": "Allow"
+        },
+        {
+            "Sid": "EC2getObjectPermission",
+            "Action": [
+                "s3:GetObject"
+            ],
+            "Resource": [
+                "arn:aws:s3::<ACCOUNT-ID>:ire-cm-peguin-dev/*"
+            ],
+            "Effect": "Allow"
+        }
+    ]
+}
