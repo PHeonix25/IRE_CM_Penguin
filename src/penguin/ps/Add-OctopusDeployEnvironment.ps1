@@ -54,21 +54,21 @@
 
 .EXAMPLE 
  PS> # When using command-line parameters
- PS> Add-OctopusDeployEnvironment -Name 'New Environment Name' -OctopusServer http://localhost:8080 -OctopusApiKey API-#######
+ PS> Add-OctopusDeployEnvironment -EnvironmentName 'New Environment Name' -OctopusServer http://localhost:8080 -OctopusApiKey API-#######
 
 .EXAMPLE 
  PS> # When using environment variables
- PS> Add-OctopusDeployEnvironment -Name 'New Environment Name'
+ PS> Add-OctopusDeployEnvironment -EnvironmentName 'New Environment Name'
 
 #> 
 function Add-OctopusDeployEnvironment {
     [CmdletBinding()]
     param 
     (
-        [string]$ToolsDirectory = '.\OctopusTools.7.4.2.portable', 
-        [string]$Name = 'Dev-IRE',
-        [string]$OctopusServer, 
-        [string]$OctopusApiKey
+        [Alias("ToolDir")][string]$ToolsDirectory = '.\OctopusTools.7.4.2.portable', 
+        [Alias("EnvName")][string]$EnvironmentName = 'Dev-IRE',
+        [Alias("Server")][string]$OctopusServer, 
+        [Alias("ApiKey")][string]$OctopusApiKey
     )
     
     BEGIN {
