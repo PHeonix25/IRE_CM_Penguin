@@ -49,23 +49,20 @@
 function Install-NessusAgent {
     [CmdletBinding()]
     param (
-        [string]$NessusKey,
-        [string]$NessusGroups = "AU Servers",
-        [string]$NessusServer = "cloud.tenable.com"
+        [Parameter(Mandatory)][string]$NessusKey,
+        [Alias("G")][string]$NessusGroups = "AU Servers",
+        [Alias("S")][string]$NessusServer = "cloud.tenable.com"
     )
     
     BEGIN {
         Write-Verbose "=> '$PSCommandPath' has started.";
 
         # Validate/assign parameters
-        if (-not $NessusKey) {
-            throw [System.ArgumentNullException]("NessusKey")
-        }
         if (-not $NessusGroups) {
-            throw [System.ArgumentNullException]($NessusGroups)
+            throw [System.ArgumentNullException]("NessusGroups")
         }
         if (-not $NessusServer) {
-            throw [System.ArgumentNullException]($NessusServer)
+            throw [System.ArgumentNullException]("NessusServer")
         }
 
         # Assign global variables
@@ -76,16 +73,16 @@ function Install-NessusAgent {
 
         # Download prerequisite packages
         if (Test-Path $DownloadedNessusAgent) {
-            Write-Warning "Downloaded Nessus Agent located ('$(Resolve-Path $DownloadedNessusAgent)'); Skipping download!"
+            Write-Warning "Previously downloaded Nessus Agent located ('$(Resolve-Path $DownloadedNessusAgent)'); Skipping download!"
         } else {
             Invoke-WebRequest -Uri $NessusAgentDownloadURL -OutFile $DownloadedNessusAgent
         }
 
         $DownloadedNessusAgentHash = (Get-FileHash -Algorithm SHA256 -Path $DownloadedNessusAgent).Hash;
-        Write-Verbose "Downloaded '$(Resolve-Path $DownloadedNessusAgent)' - HASH: $DownloadedNessusAgentHash";
+        Write-Verbose "Located '$(Resolve-Path $DownloadedNessusAgent)' - HASH: $DownloadedNessusAgentHash";
 
         if ($DownloadedNessusAgentHash -ne $PublishedNessusAgentHash) {
-            throw "Downloaded NessusAgent file hash is different from expected!`n`n" +`
+            throw "NessusAgent file hash is different from expected!`n`n" +`
                     "EXPECTED: $PublishedNessusAgentHash`n`n" +`
                     "RECEIVED: $DownloadedNessusAgentHash`n`n";
         } else {
@@ -95,11 +92,12 @@ function Install-NessusAgent {
 
     PROCESS {
         try {
-            $executable = "msiexec"
-            $arguments = "/i $DownloadedNessusAgent /passive /norestart /qn /L*V "".\nessus_installation.log"" NESSUS_GROUPS=""$NessusGroups"" NESSUS_SERVER=""$NessusServer"" NESSUS_KEY=""$LoggingReplacement"""
-            Write-Verbose "Executing: $executable $arguments"
+
+            $arguments = "/i $DownloadedNessusAgent /passive /norestart /qn /L* "".\nessus_installation.log"" NESSUS_GROUPS=""$NessusGroups"" NESSUS_SERVER=""$NessusServer"" NESSUS_KEY=""$LoggingReplacement"""
+            Write-Verbose "Executing: 'msiexec $arguments'"
             $arguments = $arguments.Replace($LoggingReplacement, $NessusKey)
-            Start-Process $executable -ArgumentList $arguments -Wait
+
+            Start-Process "msiexec" -ArgumentList $arguments -Wait
         }
         catch {
             Write-Error "An error occurred that could not be automatically resolved:"
