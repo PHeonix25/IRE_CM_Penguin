@@ -1,28 +1,167 @@
 AWSTemplateFormatVersion: 2010-09-09
-
 Parameters:
+
   PenguinEnvironment:
-    Type: "String"
-    Description: "The specified environment for this deployment"
-    Default: "cm_penguin_nonprod"
-    AllowedValues:
-      - cm_penguin_nonprod
-      - cm_penguin_staging 
-      - cm_penguin_training
-      - cm_penguin_preprod
-      - cm_penguin_prod
-  PenguinApplicationName:
     Type: String
-    
-  PenguinVpc:
+    Description: The specified environment for this deployment
+    Default: ire-cm-penguin-dev
+    AllowedValues:
+      - ire-cm-penguin-dev
+      - ire-cm-penguin-test2
+      - ire-cm-penguin-test3
+      - ire-cm-penguin-staging 
+      - ire-cm-penguin-training
+      - ire-cm-penguin-preprod
+      - ire-cm-penguin-prod
+  
+  PenguinVpcId:
     Type: String
     Description: "The VPC ID of the environment the app is deploying into."
+  
+  PenguinDatabaseIamInstanceProfile:
+    Type: String
+    Description: "The ARN of the IAM Instance Profile to be assigned to this instance"
+
+  PenguinDatabaseEc2Type:
+    Type: String
+    Description: "The EC2 Instance Type"
+    Default: 't3.medium'
+
+  PenguinKmsCmkArn:
+    Description: "The KMS CMK ARN of the key created for this Penguin application environment."
+    Type: String
+  
+  PenguinDatabaseAmiId:
+    Type: String
+    Description: "The AMI of the AMS SOE image."
+
+  PenguinDatabaseSubnetIdAz1:
+    Type: String
+    Description: "The Subnet ID of Database Subnet A"
+  PenguinDatabaseSubnetIdAz2:
+    Type: String
+    Description: "The Subnet ID of Database Subnet B"
+
+Mappings:
+  PenguinEnvironmentSettings:
+    ire-cm-penguin-dev:
+      EnvShortName: dev1
+      VpcCidr: 10.110.32.0/21
+      PublicSubnet1Az1: 10.110.32.0/25
+      PublicSubnet1Az2: 10.110.32.128/25
+      ApplicationSubnetAz1: 10.110.33.0/25
+      ApplicationSubnetAz2: 10.110.33.128/25
+      DatabaseSubnetAz1: 10.110.34.0/25
+      DatabaseSubnetAz2: 10.110.34.128/25
+      PenguinEc2InstanceSize: t3.medium
+      ScalingGroupMin: 1
+      ScalingGroupMax: 1
+      LogRetentionInDays: 7
+
+    ire-cm-penguin-test2:
+      EnvShortName: test2
+      VpcCidr: 10.110.40.0/21
+      PublicSubnet1Az1: 10.110.40.0/25
+      PublicSubnet1Az2: 10.110.40.128/25
+      ApplicationSubnetAz1: 10.110.41.0/25
+      ApplicationSubnetAz2: 10.110.41.128/25
+      DatabaseSubnetAz1: 10.110.42.0/25
+      DatabaseSubnetAz2: 10.110.42.128/25
+      PenguinEc2InstanceSize: t3.medium
+      ScalingGroupMin: 1
+      ScalingGroupMax: 1
+      LogRetentionInDays: 7
+      
+    ire-cm-penguin-test3:
+      EnvShortName: test3
+      VpcCidr: 10.110.48.0/21
+      PublicSubnet1Az1: 10.110.48.0/25
+      PublicSubnet1Az2: 10.110.48.128/25
+      ApplicationSubnetAz1: 10.110.49.0/25
+      ApplicationSubnetAz2: 10.110.49.128/25
+      DatabaseSubnetAz1: 10.110.50.0/25
+      DatabaseSubnetAz2: 10.110.50.128/25
+      PenguinEc2InstanceSize: t3.medium
+      ScalingGroupMin: 1
+      ScalingGroupMax: 1
+      LogRetentionInDays: 7
+
+    ire-cm-penguin-staging:
+      EnvShortName: staging
+      VpcCidr: 10.110.56.0/21
+      PublicSubnet1Az1: 10.110.56.0/25
+      PublicSubnet1Az2: 10.110.56.128/25
+      ApplicationSubnetAz1: 10.110.57.0/25
+      ApplicationSubnetAz2: 10.110.57.128/25
+      DatabaseSubnetAz1: 10.110.58.0/25
+      DatabaseSubnetAz2: 10.110.58.128/25
+      PenguinEc2InstanceSize: t3.medium
+      ScalingGroupMin: 1
+      ScalingGroupMax: 1
+      LogRetentionInDays: 7
+
+    ire-cm-penguin-training:
+      EnvShortName: training
+      VpcCidr: 10.110.16.0/21
+      PublicSubnet1Az1: 10.110.16.0/25
+      PublicSubnet1Az2: 10.110.16.128/25
+      ApplicationSubnetAz1: 10.110.17.0/25
+      ApplicationSubnetAz2: 10.110.17.128/25
+      DatabaseSubnetAz1: 10.110.18.0/25
+      DatabaseSubnetAz2: 10.110.18.128/25
+      PenguinEc2InstanceSize: t3.medium
+      ScalingGroupMin: 1
+      ScalingGroupMax: 1
+      LogRetentionInDays: 7
+
+    ire-cm-penguin-preprod:
+      EnvShortName: preprod
+      VpcCidr: 10.110.8.0/21
+      PublicSubnet1Az1: 10.110.8.0/25
+      PublicSubnet1Az2: 10.110.8.128/25
+      ApplicationSubnetAz1: 10.110.9.0/25
+      ApplicationSubnetAz2: 10.110.9.128/25
+      DatabaseSubnetAz1: 10.110.10.0/25
+      DatabaseSubnetAz2: 10.110.10.128/25
+      PenguinEc2InstanceSize: m5.large
+      ScalingGroupMin: 2
+      ScalingGroupMax: 2
+      LogRetentionInDays: 7
+
+    ire-cm-penguin-prod:
+      EnvShortName: prod
+      VpcCidr: 10.110.0.0/21
+      PublicSubnet1Az1: 10.110.0.0/25
+      PublicSubnet1Az2: 10.110.0.128/25
+      ApplicationSubnetAz1: 10.110.1.0/25
+      ApplicationSubnetAz2: 10.110.1.128/25
+      DatabaseSubnetAz1: 10.110.2.0/25
+      DatabaseSubnetAz2: 10.110.2.128/25
+      PenguinEc2InstanceSize: m5.large
+      ScalingGroupMin: 3
+      ScalingGroupMax: 5
+      LogRetentionInDays: 7
 
 Resources:
-  PenguinDatabaseSecurityGroup:
-    Type: 'AWS::EC2::SecurityGroup'
+  PenguinDatabasePlacementGroup:
+    Type: AWS::EC2::PlacementGroup
+    Properties: 
+      Strategy: spread
+
+  PenguinDatabasePrimary:
+    Type: AWS::EC2::Instance
     Properties:
-      GroupDescription: Access rules and definitions for Penguin Application Servers
-      GroupName: PenguinApplicationSecurityGroup
-      VpcId: 
-        Ref: PenguinVpc
+      ImageId: !Ref PenguinDatabaseAmiId
+      BlockDeviceMappings:
+          - DeviceName: /dev/sda1
+            Ebs:
+              VolumeSize: 100
+              VolumeType: gp2
+              DeleteOnTermination: true
+              Encrypted: true
+              KmsKeyId: !Ref PenguinKmsCmkArn
+      PlacementGroupName: !Ref PenguinDatabasePlacementGroup
+      InstanceType: !Ref PenguinDatabaseEc2Type
+      CreditSpecification: 
+        CPUCredits: unlimited
+      
