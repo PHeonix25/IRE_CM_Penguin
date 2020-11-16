@@ -33,24 +33,24 @@ Parameters:
     Description: "The Route 53 Hosted Zone ID of the application account hosted zone."
     Type: String
 
-  PenguinPublicSubnet1Az1:
+  PenguinPublicSubnetId1Az1:
     Type: String
     Description: "The Subnet ID of Public Subnet A"
-  PenguinPublicSubnet1Az2:
+  PenguinPublicSubnetId1Az2:
     Type: String
     Description: "The Subnet ID of Public Subnet B"
 
-  PenguinApplicationSubnetAz1:
+  PenguinApplicationSubnetIdAz1:
     Type: String
     Description: "The Subnet ID of Application Subnet A"
-  PenguinApplicationSubnetAz2:
+  PenguinApplicationSubnetIdAz2:
     Type: String
     Description: "The Subnet ID of Application Subnet B"
   
-  PenguinDatabaseSubnetAz1:
+  PenguinDatabaseSubnetIdAz1:
     Type: String
     Description: "The Subnet ID of Database Subnet A"
-  PenguinDatabaseSubnetAz2:
+  PenguinDatabaseSubnetIdAz2:
     Type: String
     Description: "The Subnet ID of Database Subnet B"
 
@@ -252,8 +252,8 @@ Resources:
       SecurityGroups:
         - PenguinPublicAlbSecGroup
       Subnets:
-        - !Ref PenguinPublicSubnet1Az1
-        - !Ref PenguinPublicSubnet1Az2
+        - !Ref PenguinPublicSubnetId1Az1
+        - !Ref PenguinPublicSubnetId1Az2
   
   PenguinApiLaunchTemplate:
     Type: 'AWS::EC2::LaunchTemplate'
@@ -309,8 +309,8 @@ Resources:
         WaitOnResourceSignals: true
     Properties:
       VPCZoneIdentifier:
-        - !Ref PenguinApplicationSubnetAz1
-        - !Ref PenguinApplicationSubnetAz2
+        - !Ref PenguinApplicationSubnetIdAz1
+        - !Ref PenguinApplicationSubnetIdAz2
       HealthCheckGracePeriod: 300
       HealthCheckType: EC2
       LaunchTemplate:
