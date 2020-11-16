@@ -33,14 +33,17 @@
  when running this on Production. 
  For development/Docker purposes though, we allow you to override them
 
-.PARAMETER Name
- [MANDATORY] The name of the environment that you want to add to Octo
+.PARAMETER EnvironmentName
+ [MANDATORY] [Alias: env] 
+ The name of the environment that you want to add to Octo
 
 .PARAMETER OctopusServer
- [MANDATORY] The full URL to the admin interface for your OctopusDeploy Server
+ [MANDATORY] [Alias: server]
+ The full URL to the admin interface for your OctopusDeploy Server
 
 .PARAMETER OctopusApiKey
- [MANDATORY] An API key that we can use to administer the OctopusDeploy Server.
+ [MANDATORY] [Alias: key]
+ An API key that we can use to administer the OctopusDeploy Server.
  Should start with 'API-'
 
 .PARAMETER CleanUp
@@ -67,9 +70,9 @@ function Add-OctopusDeployEnvironment {
     [CmdletBinding()]
     param 
     (
-        [Parameter(Mandatory)][Alias("EnvName")][string]$EnvironmentName,
-        [Parameter(Mandatory)][Alias("Server")][string]$OctopusServer, 
-        [Parameter(Mandatory)][Alias("ApiKey")][string]$OctopusApiKey,
+        [Parameter(Mandatory)][Alias("env")][string]$EnvironmentName,
+        [Parameter(Mandatory)][Alias("server")][string]$OctopusServer, 
+        [Parameter(Mandatory)][Alias("key")][string]$OctopusApiKey,
         [bool]$CleanUp = $true
     )
     
