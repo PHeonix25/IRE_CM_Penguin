@@ -13,7 +13,7 @@ Parameters:
       - cm_penguin_prod
   PenguinApplicationName:
     Type: String
-    Default: !Join [ '-', !Ref PenguinEnvironment, "World"]
+    
   PenguinVpc:
     Type: String
     Description: "The VPC ID of the environment the app is deploying into."

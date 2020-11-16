@@ -7,7 +7,7 @@
                 "ssm:GetParameter",
                 "ssm:GetParameters"
             ],
-            "Resource": "arn:aws:ssm:ap-southeast-2:<ACCOUNT-ID>:parameter/ire-cm-peguin-dev-*",
+            "Resource": "arn:aws:ssm:ap-southeast-2:145563897443:parameter/ire-cm-peguin-dev-*",
             "Effect": "Allow"
         },
         {
@@ -16,7 +16,7 @@
                 "s3:GetObject"
             ],
             "Resource": [
-                "arn:aws:s3::<ACCOUNT-ID>:ire-cm-peguin-dev/*"
+                "arn:aws:s3::145563897443:ire-cm-penguin-dev-infra"
             ],
             "Effect": "Allow"
         }

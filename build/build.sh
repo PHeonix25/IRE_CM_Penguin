@@ -3,10 +3,13 @@
 # Setup Params
 CW_CONFIG="./src/cw_logs.json"
 LOG_TARGETS="./config/logs.csv"
-PENGUIN_ENVIRONMENT='ire-cm-penguin-dev'
 
 # Create Penguin CW Logs Agent config file
-python3 ./build/generate-cw-config.py -o $CW_CONFIG -f $LOG_TARGETS -e $PENGUIN_ENVIRONMENT
+python3 ./build/generate-cw-config.py -o $CW_CONFIG -f $LOG_TARGETS
+
+# PShell Interpolation
+# Sed in cloudwatch unified agent config into PShell Script
+# sed Pshell script into Dynamic Template
 
 # Lint
 # cfn-lint -a ./ams_lint -t ./src/*.yaml

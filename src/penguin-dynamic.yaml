@@ -22,9 +22,15 @@ Parameters:
     Description: "The ARN of the IAM Instance Profile to be assigned to this instance"
   
   PenguinApiAmiId:
+    Description: "The AMI of the AMS SOE image."
     Type: String
 
   PenguinKmsCmkArn:
+    Description: "The KMS CMK ARN of the key created for this Penguin application environment."
+    Type: String
+
+  PenguinHostedZoneId:
+    Description: "The Route 53 Hosted Zone ID of the application account hosted zone."
     Type: String
 
   PenguinPublicSubnet1Az1:
@@ -164,7 +170,11 @@ Resources:
         - IpProtocol: tcp
           FromPort: 443
           ToPort: 443
-          CidrIp: 0.0.0.0/0
+          CidrIp: !FindInMap [PenguinEnvironmentSettings, !Ref PenguinEnvironment, ApplicationSubnetAz1]
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: !FindInMap [PenguinEnvironmentSettings, !Ref PenguinEnvironment, ApplicationSubnetAz2]
   
   PenguinApplicationSecGroup:
     Type: 'AWS::EC2::SecurityGroup'
@@ -177,6 +187,61 @@ Resources:
           FromPort: 443
           ToPort: 443
           SourceSecurityGroupId: !GetAtt [PenguinPublicAlbSecGroup, GroupId]
+        - IpProtocol: tcp
+          Description: "Comms from Octopus code deployment"
+          FromPort: 10943
+          ToPort: 10943
+          CidrIp: 10.200.20.120/32
+        - IpProtocol: tcp
+          Description: "Comms from Octopus code deployment -- likely redundant to be investigated"
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 10.200.20.120/32
+        - IpProtocol: tcp
+          Description: "Comms from Octopus code deployment -- likely redundant to be investigated"
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 10.200.20.120/32
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          DestinationSecurityGroupId: !GetAtt [PenguinPublicAlbSecGroup, GroupId]
+        - IpProtocol: tcp
+          Description: "Comms to EMEA MS SQL servers"
+          FromPort: 1433
+          ToPort: 1433
+          CidrIp: !FindInMap [PenguinEnvironmentSettings, !Ref PenguinEnvironment, DatabaseSubnetAz1]
+        - IpProtocol: tcp
+          Description: "Comms to EMEA MS SQL servers"
+          FromPort: 1433
+          ToPort: 1433
+          CidrIp: !FindInMap [PenguinEnvironmentSettings, !Ref PenguinEnvironment, DatabaseSubnetAz2]
+        - IpProtocol: tcp
+          Description: "Comms to ULWEBn existing on prem."
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 10.2.4.0/24
+        - IpProtocol: tcp
+          Description: "Comms to ULWEBn existing on prem."
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 10.2.4.0/24
+        - IpProtocol: tcp
+          Description: "Comms to Payment Gateway Application Subnets on Shared Services account"
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 10.110.25.0/24
+        - IpProtocol: tcp
+          Description: "Comms to Azure On Prem AD"
+          FromPort: 389
+          ToPort: 389
+          CidrIp: 10.2.0.0/24
+        - IpProtocol: tcp
+          Description: "Comms to Azure On Prem AD"
+          FromPort: 389
+          ToPort: 389
+          CidrIp: 10.2.0.0/24
 
   PenguinApiAlb:
     Type: 'AWS::ElasticLoadBalancingV2::LoadBalancer'
@@ -193,7 +258,6 @@ Resources:
   PenguinApiLaunchTemplate:
     Type: 'AWS::EC2::LaunchTemplate'
     Properties:
-      LaunchTemplateName: "IRE-CM-Penguin-API"
       LaunchTemplateData:
         ImageId: !Ref PenguinApiAmiId
         InstanceType: !FindInMap [PenguinEnvironmentSettings, !Ref PenguinEnvironment, PenguinEc2InstanceSize]
@@ -221,17 +285,18 @@ Resources:
         UserData: !Base64 
           'Fn::Sub': >
             %POWERSHELL_SCRIPT%
-
-  TomcatAccessLogGroup:
-    Type: 'AWS::Logs::LogGroup'
-    Properties:
-      LogGroupName: !Sub 'customer-penguin-${PenguinEnvironment}-log-group-name'
-      RetentionInDays: !FindInMap [PenguinEnvironmentSettings, !Ref PenguinEnvironment, LogRetentionInDays]
   
   PenguinApplicationScalingGroup:
     Type: 'AWS::AutoScaling::AutoScalingGroup'
     DependsOn:
-      - LogGroups
+      - PenguinB2bLogGroup
+      - PenguinMsadLogGroup
+      - PenguinPaymentGatewayLogGroup
+      - PenguinWebLogGroup
+      - PenguinWebErrorLogGroup
+      - PenguinWebInfoLogGroup
+      - PenguinWebB2cLogGroup
+      - PenguinWebOtherLogGroup
     CreationPolicy:
       ResourceSignal:
         Timeout: PT15M
@@ -359,3 +424,14 @@ Resources:
     Properties:
       LogGroupName: !Sub 'customer-penguin-${PenguinEnvironment}-web_other-log'
       RetentionInDays: !FindInMap [PenguinEnvironmentSettings, !Ref PenguinEnvironment, LogRetentionInDays]
+
+  PenguinAlbRoute53Record:
+    Type: 'AWS::Route53::RecordSet'
+    Properties:
+      Name: !Join [".", ["api", !FindInMap [PenguinEnvironmentSettings, !Ref PenguinEnvironment, EnvShortName], "pengiun.aws-ext.covermore.co.uk"]]
+      AliasTarget:
+        DNSName: !GetAtt [PenguinApiAlb, DNSName]
+        HostedZoneId: !GetAtt [PenguinApiAlb, CanonicalHostedZoneID]
+      Type: A
+      TTL: 300
+      HostedZoneId: !Ref PenguinHostedZoneId

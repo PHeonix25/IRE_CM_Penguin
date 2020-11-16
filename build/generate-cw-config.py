@@ -27,7 +27,7 @@ with open(args.file, 'rt', encoding='utf-8-sig') as LogSource:
         cwConfig['logs']['logs_collected']['files']['collect_list'].append({
             "file_path": row[0],
             "log_group_name": "{instance_id}",
-            "log_stream_name": 'customer-penguin-{0}-{1}-logs'.format(args.environment, row[2]),
+            "log_stream_name": 'customer-penguin-{0}-{1}-logs'.format('{PenguinEnvironment}', row[2]),
             "timestamp_format": "%b %d %H:%M:%S"
         })
 
