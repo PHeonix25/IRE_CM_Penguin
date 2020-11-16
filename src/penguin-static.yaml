@@ -12,12 +12,14 @@ Parameters:
       - ire-cm-penguin-training
       - ire-cm-penguin-preprod
       - ire-cm-penguin-prod
+  
   PenguinVpcId:
     Type: String
-    Description: The VPC ID of the environment the app is deploying into.
+    Description: "The VPC ID of the environment the app is deploying into."
+    
   PenguinVpcRegion:
     Type: String
-    Description: The VPC Region of the environment
+    Description: "The VPC region of the environment the app is deploying into."
     Default: eu-west-1
 
 Mappings:
@@ -38,7 +40,14 @@ Mappings:
       EnvShortName: prod
 
 Resources:
-  PenguinDnsHostedZone:
+  PenguinDnsExternalHostedZone:
+    Type: 'AWS::Route53::HostedZone'
+    Properties:
+      HostedZoneConfig:
+        Comment: IRE-CM-Penguin AWS HostedZone
+      Name: !Join ['.', [!FindInMap [PenguinEnvironmentSettings, !Ref PenguinEnvironment, EnvShortName], 'penguin', 'aws-ext', 'covermore.co.uk']]
+  
+  PenguinDnsInternalHostedZone:
     Type: 'AWS::Route53::HostedZone'
     Properties:
       HostedZoneConfig:
@@ -48,11 +57,14 @@ Resources:
         -
           VPCId: !Ref PenguinVpcId
           VPCRegion: !Ref PenguinVpcRegion
-
 Outputs:
-  PenguinDnsHostedZoneNsRecords:
-    Description: The Environment HostedZone NS Server setting values for parent delegation
-    Value: !Join [ ',', !GetAtt PenguinDnsHostedZone.NameServers]
-  PenguinDnsHostedZoneId:
-    Description: "The Environment HostedZone record ID"
-    Value: !GetAtt PenguinDnsHostedZone.Id
+  PenguinDnsExternalHostedZoneNsRecords:
+    Description: The Environment external HostedZone NS Server setting values for parent delegation
+    Value: !Join [ ',', !GetAtt PenguinDnsExternalHostedZone.NameServers]
+  PenguinDnsExternalHostedZoneId:
+    Description: "The Environment external HostedZone record ID"
+    Value: !Ref PenguinDnsExternalHostedZone
+
+  PenguinDnsInternalHostedZoneId:
+    Description: "The Environment internal HostedZone record ID"
+    Value: !Ref PenguinDnsInternalHostedZone
