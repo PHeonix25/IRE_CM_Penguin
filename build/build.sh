@@ -17,7 +17,8 @@ python3 ./build/generate-cw-config.py -o $CW_CONFIG -f $LOG_TARGETS
 # Nag
 # cfn-nag ./src/*.yaml
 
-# Transform yaml -> json
+# Transform yaml -> json - pip3 install cfn-flip
+# cfn-flip
 
 # Validate Json
 
