@@ -93,7 +93,7 @@ function Install-NessusAgent {
     PROCESS {
         try {
 
-            $arguments = "/i $DownloadedNessusAgent /passive /norestart /qn /L* "".\nessus_installation.log"" NESSUS_GROUPS=""$NessusGroups"" NESSUS_SERVER=""$NessusServer"" NESSUS_KEY=""$LoggingReplacement"""
+            $arguments = "/i $DownloadedNessusAgent /passive /norestart /qn /LAME "".\install_nessusagent.log"" NESSUS_GROUPS=""$NessusGroups"" NESSUS_SERVER=""$NessusServer"" NESSUS_KEY=""$LoggingReplacement"""
             Write-Verbose "Executing: 'msiexec $arguments'"
             $arguments = $arguments.Replace($LoggingReplacement, $NessusKey)
 
