@@ -72,7 +72,7 @@ function Add-OctopusDeployEnvironment {
     )
     
     BEGIN {
-        Write-Verbose "=> .\Add-OctopusDeployEnvironment has started.";
+        Write-Verbose "=> '$PSCommandPath' has started.";
     
         # Validate environment variables
         if ($null -eq $ENV:OCTOPUS_CLI_SERVER) {
@@ -112,6 +112,6 @@ function Add-OctopusDeployEnvironment {
     }
 
     END {
-        Write-Verbose "=> .\Add-OctopusDeployEnvironment has completed.";
+        Write-Verbose "=> '$PSCommandPath' has completed successfully.";
     }
 };
