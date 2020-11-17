@@ -284,7 +284,43 @@ Resources:
               KmsKeyId: !Ref PenguinKmsCmkArn
         UserData: !Base64 
           'Fn::Sub': >
-            %POWERSHELL_SCRIPT%
+            & {
+              BEGIN {
+                  $ScriptName = "Cover-More SOE Customisation"
+                  Import-Module Microsoft.PowerShell.Management -UseWindowsPowerShell
+                  if (-not (Get-EventLog -LogName Application -Source $ScriptName)) {
+                      Write-Warning "Event log source not located, creating now."
+                      try {
+                          New-EventLog -LogName Application -Source $ScriptName;
+                      }
+                      catch {
+                          Write-Error "Event log source could not be created. Please try again as an Administrator."
+                          return;
+                      }
+                  }
+                  function log { 
+                      param([System.Diagnostics.EventLogEntryType]$type = "Information", [string]$msg)
+                      Write-EventLog -LogName "Application" -Source $ScriptName -EntryType $type –EventID 1 -Category 1 -Message $msg 
+                      Write-Output "$type`t`t$msg"
+                  }
+                  log -msg """$PSCommandPath"" has started."
+              }
+              PROCESS {
+                  try {
+                      # Run NessusAgent script
+                      log -msg "Pretend I ran the NessusAgent script [✔]"
+                      # Run Tentacle script
+                      log -msg "Pretend I ran the Tentacle script [✔]"
+                  }
+                  catch {
+                      log "Error" "An error occurred that could not be automatically resolved: $_"
+                      throw $_;
+                  }
+              }
+              END {
+                  log -msg """$PSCommandPath"" has completed successfully."
+              }
+            };        
   
   PenguinApplicationScalingGroup:
     Type: 'AWS::AutoScaling::AutoScalingGroup'
