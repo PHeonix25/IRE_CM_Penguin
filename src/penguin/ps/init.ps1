@@ -44,7 +44,7 @@
                 log -msg "[✔] Pretend I downloaded the contents of the bucket."
                 Read-S3Object -BucketName $S3BucketUrl -KeyPrefix $S3BucketFolder -Folder $LocalScriptFolder
             } else {
-                log "Error" "[❌] NessusInstallation script '$NessusScriptFileName' not located in bucket '$S3Bucket'."
+                log "Error" "[❌] S3 Bucket at '$S3BucketUrl' is not accessible."
             }
 
             # Download & run NessusAgent script
