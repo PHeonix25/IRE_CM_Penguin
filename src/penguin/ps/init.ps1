@@ -1,17 +1,3 @@
-
-<#PSScriptInfo
-
-.VERSION 1.0
-
-.GUID f7a7c268-0732-40b8-93bd-844f5dbd6a3b
-
-.AUTHOR pat.hermens@slalom.com
-
-.COMPANYNAME Slalom Build
-
-.TAGS Initalisation
-
-#>
 & {
     BEGIN {
         $S3BucketUrl = {{REPLACE_ME}}
