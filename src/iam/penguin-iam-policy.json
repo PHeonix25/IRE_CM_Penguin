@@ -2,12 +2,12 @@
     "Version": "2012-10-17",
     "Statement": [
         {
-            "Sid": "EC2toretriveParamsfromSystemManager",
+            "Sid": "EC2toRetriveParamsFromSSM",
             "Action": [
                 "ssm:GetParameter",
                 "ssm:GetParameters"
             ],
-            "Resource": "arn:aws:ssm:ap-southeast-2:145563897443:parameter/ire-cm-peguin-dev-*",
+            "Resource": "arn:aws:ssm:eu-west-1:145563897443:parameter/ire-cm-peguin-dev-*",
             "Effect": "Allow"
         },
         {
