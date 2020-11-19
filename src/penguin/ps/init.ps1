@@ -4,8 +4,6 @@
         $S3BucketFolder = "soe_config"
         $EventLogSource = "Cover-More SOE Customisation"
         $LocalScriptFolder = "C:\Configuration"
-        $NessusScriptFileName = "Install-NessusAgent.ps1"
-        $TentacleScriptFileName = "Set-OctopusDeployTentacleConfiguration.ps1"
 
         Import-Module Microsoft.PowerShell.Management -UseWindowsPowerShell
         if (-not (Get-EventLog -LogName Application -Source $EventLogSource)) {
@@ -46,23 +44,11 @@
             } else {
                 log "Error" "[❌] S3 Bucket at '$S3BucketUrl' is not accessible."
             }
-
-            # Download & run NessusAgent script
-            $NessusScript = "$LocalScriptFolder\$NessusScriptFileName"
-            if (Test-Path -Path $NessusScript){
-                Start-Process -FilePath $NessusScript -Wait
-                log -msg "[✔] NessusAgent installation script '$NessusScript' completed."
-            } else {
-                log "Error" "[❌] NessusAgent installation script '$NessusScriptFileName' not located in folder '$LocalScriptFolder'."
-            }
             
-            # Run Tentacle script
-            $TentacleScript = "$LocalScriptFolder\$TentacleScriptFileName"
-            if (Test-Path -Path $TentacleScript){
-                Start-Process -FilePath $TentacleScript -Wait
-                log -msg "[✔] Tentacle installation script '$TentacleScript' completed."
-            } else {
-                log "Error" "[❌] Tentacle configuration script '$TentacleScriptFileName' not located in folder '$LocalScriptFolder'."
+            # Run each script that was downloaded into the folder
+            foreach ($script in $(Get-ChildItem -Path $LocalScriptFolder)) {
+                Start-Process -FilePath $script.FullName -Wait
+                log -msg "[✔] Configuration script '$($script.FullName)' completed.";
             }
         }
         catch {
