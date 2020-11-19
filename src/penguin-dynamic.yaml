@@ -29,6 +29,10 @@ Parameters:
     Description: "The KMS CMK ARN of the key created for this Penguin application environment."
     Type: String
 
+  PenguinAcmCertificateArn:
+    Description: "The ACM Certificate arn"
+    Type: String
+
   PenguinHostedZoneId:
     Description: "The Route 53 Hosted Zone ID of the application account hosted zone."
     Type: String
@@ -53,6 +57,11 @@ Parameters:
   PenguinDatabaseSubnetIdAz2:
     Type: String
     Description: "The Subnet ID of Database Subnet B"
+
+  SharedServicesCidr:
+    Type: String
+    Description: "The VPC CIDR for MALZ Shared Services account"
+    Default: 10.109.2.0/23
 
 Mappings:
   PenguinEnvironmentSettings:
@@ -202,7 +211,23 @@ Resources:
           FromPort: 443
           ToPort: 443
           CidrIp: 10.200.20.120/32
+        - IpProtocol: "-1"
+          FromPort: -1
+          ToPort: -1
+          Description: "Comms to Shared Services"
+          CidrIp: !Ref SharedServicesCidr
+
       SecurityGroupEgress:
+        - IpProtocol: tcp
+          Description: "Public 443 comms to internet"
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          Description: "Public 80 comms to internet"
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
         - IpProtocol: tcp
           FromPort: 443
           ToPort: 443
@@ -232,25 +257,20 @@ Resources:
           FromPort: 443
           ToPort: 443
           CidrIp: 10.110.25.0/24
-        - IpProtocol: tcp
-          Description: "Comms to Azure On Prem AD"
-          FromPort: 389
-          ToPort: 389
-          CidrIp: 10.2.0.0/24
-        - IpProtocol: tcp
-          Description: "Comms to Azure On Prem AD"
-          FromPort: 389
-          ToPort: 389
-          CidrIp: 10.2.0.0/24
+        - IpProtocol: "-1"
+          FromPort: -1
+          ToPort: -1
+          Description: "Allow all Comms to Shared Services"
+          CidrIp: !Ref SharedServicesCidr
 
   PenguinApiAlb:
     Type: 'AWS::ElasticLoadBalancingV2::LoadBalancer'
     Properties:
       Type: "application"
       IpAddressType: "ipv4"
-      Name: ""
+      Name: !Join ["-", ["IRE-CM-Penguin", !FindInMap [PenguinEnvironmentSettings, !Ref PenguinEnvironment, EnvShortName], "ALB"]]
       SecurityGroups:
-        - PenguinPublicAlbSecGroup
+        - !Ref PenguinPublicAlbSecGroup
       Subnets:
         - !Ref PenguinPublicSubnetId1Az1
         - !Ref PenguinPublicSubnetId1Az2
@@ -268,7 +288,7 @@ Resources:
             AssociatePublicIpAddress: false
             DeleteOnTermination: true
             Groups:
-              - !Ref PenguinPublicAlbSecGroup
+              - !Ref PenguinApplicationSecGroup
         TagSpecifications:
           - ResourceType: instance
             Tags:
@@ -348,7 +368,7 @@ Resources:
         - !Ref PenguinApplicationSubnetIdAz1
         - !Ref PenguinApplicationSubnetIdAz2
       HealthCheckGracePeriod: 300
-      HealthCheckType: EC2
+      HealthCheckType: ELB
       LaunchTemplate:
         LaunchTemplateId: !Ref PenguinApiLaunchTemplate
         Version: !GetAtt [PenguinApiLaunchTemplate, LatestVersionNumber]
@@ -411,7 +431,7 @@ Resources:
       Protocol: HTTPS
       SslPolicy: ELBSecurityPolicy-2016-08
       Certificates:
-        - CertificateArn: !Ref PenguinKmsCmkArn
+        - CertificateArn: !Ref PenguinAcmCertificateArn
 
   PenguinB2bLogGroup:
     Type: 'AWS::Logs::LogGroup'
@@ -464,10 +484,9 @@ Resources:
   PenguinAlbRoute53Record:
     Type: 'AWS::Route53::RecordSet'
     Properties:
-      Name: !Join [".", ["api", !FindInMap [PenguinEnvironmentSettings, !Ref PenguinEnvironment, EnvShortName], "pengiun.aws-ext.covermore.co.uk"]]
+      Name: !Join [".", ["api", !FindInMap [PenguinEnvironmentSettings, !Ref PenguinEnvironment, EnvShortName], "penguin.aws-ext.covermore.co.uk"]]
       AliasTarget:
         DNSName: !GetAtt [PenguinApiAlb, DNSName]
         HostedZoneId: !GetAtt [PenguinApiAlb, CanonicalHostedZoneID]
       Type: A
-      TTL: 300
       HostedZoneId: !Ref PenguinHostedZoneId
