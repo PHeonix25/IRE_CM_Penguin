@@ -48,13 +48,13 @@
 
             # Download the contents of the configuration bucket
             if (Get-S3Object -BucketName $S3BucketUrl) {
-                log -msg "[✔] Pretend I downloaded the contents of the bucket."
                 Read-S3Object -BucketName $S3BucketUrl -KeyPrefix $S3BucketFolder -Folder $LocalScriptFolder
+                log -msg "[✔] The contents of the folder '$S3BucketFolder' in the S3Bucket '$S3BucketUrl' have been downloaded to '$LocalScriptFolder'."
             } else {
                 log "Error" "[❌] S3 Bucket at '$S3BucketUrl' is not accessible."
             }
             
-            # Run each script that was downloaded into the folder
+            # Run each script that was downloaded
             foreach ($script in $(Get-ChildItem -Path $LocalScriptFolder)) {
                 Start-Process -FilePath $script.FullName -Wait
                 log -msg "[✔] Configuration script '$($script.FullName)' completed.";
