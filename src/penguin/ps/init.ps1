@@ -1,12 +1,13 @@
 & {
     BEGIN {
-        $S3BucketUrl = {{REPLACE_ME}}
+        $S3BucketUrl = { { REPLACE_ME } }
         $S3BucketFolder = "soe_config"
-        $EventLogSource = "Cover-More SOE Customisation"
         $LocalScriptFolder = "C:\Configuration"
-
-        Import-Module Microsoft.PowerShell.Management -UseWindowsPowerShell
-        if (-not (Get-EventLog -LogName Application -Source $EventLogSource)) {
+        $LocalWwwrootFolder = "C:\inetpub\wwwroot\index.html"
+        $EventLogSource = "Cover-More SOE Customisation"
+        
+        Import-Module Microsoft.PowerShell.Management
+        if (-not ([System.Diagnostics.EventLog]::SourceExists($EventLogSource))) {
             Write-Warning "Event log source not located, creating now."
             try {
                 New-EventLog -LogName Application -Source $EventLogSource;
@@ -18,43 +19,54 @@
         }
         function log { 
             param([System.Diagnostics.EventLogEntryType]$type = "Information", [string]$msg)
-            Write-EventLog -LogName "Application" -Source $EventLogSource -EntryType $type –EventID 1 -Category 1 -Message $msg 
+            Write-EventLog -LogName "Application" -Source $EventLogSource -EntryType $type -EventID 1 -Category 1 -Message $msg 
             Write-Output "$type`t`t$msg"
         }
 
-        log -msg """$PSCommandPath"" has started."
-
-        if ($null -eq $(Get-Module AWS.Tools.S3)) {
-            log "Warn" "PowerShell Module 'AWS.Tools.S3' needs to be installed & available for this script to function. Installing now."
-            Install-Module -Name AWS.Tools.Installer -Force;
-            Install-AWSToolsModule AWS.Tools.S3 -Force;
-        }
-        log -msg "[✔] PowerShell Module 'AWS.Tools.S3' availability has been confirmed."
-
-        if ($(Get-WindowsFeature Web-Server).InstallState -ne "Installed") {
-            log "Warn" "Windows Feature 'Web-Server' needs to be enabled for the healthchecks to work. Configuring now."
-            Install-WindowsFeature Web-Server -IncludeManagementTools;
-            log -msg "[✔] IIS has been enabled."
-        }
-
-        Write-Output "<h1>Hello World</h1>" | Out-File -FilePath "C:\inetpub\wwwroot\index.html";
-        log -msg "[✔] 'HelloWorld' dumped to local folder."
-        $response = (Invoke-WebRequest "http://localhost" -UseBasicParsing);
-        log -msg "Basic request to 'http://localhost' returned the following: `n'$($response.StatusCode) $($response.StatusDescription)'"
+        log -msg "$(if ($PSCommandPath) { "'$PSCommandPath'" } else { "Initialisation" }) has started."
     }
 
     PROCESS {
 
         try {
+            # Ensure we have prerequisite modules/features available
+            # Check that the AWS.Tools.S3 module is available:
+            if ($null -eq $(Get-Module AWS.Tools.S3)) {
+                log "Warn" "PowerShell Module 'AWS.Tools.S3' needs to be installed & available for this script to function. Installing now."
+                Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force;
+                Install-Module -Name AWS.Tools.S3 -Force;
+                Import-Module -Name AWS.Tools.S3;
+            }
+            log -msg "[✔] PowerShell Module 'AWS.Tools.S3' availability has been confirmed."
+    
+            # Check that IIS is installed/enabled
+            if ($(Get-WindowsFeature Web-Server).InstallState -ne "Installed") {
+                log "Warn" "Windows Feature 'Web-Server' needs to be enabled for the healthchecks to work. Configuring now."
+                Install-WindowsFeature Web-Server -IncludeManagementTools;
+            }
+            log -msg "[✔] IIS has been enabled."
+
+            # Make sure there is a basic index.html available to answer requests
+            if (-not (Get-Item -Path $LocalWwwrootFolder)) {
+                Write-Output "<h1>Hello World</h1>" | Out-File -FilePath $LocalWwwrootFolder;
+                log -msg "[✔] 'Hello World' index.html dumped to local wwwroot folder: '$LocalWwwrootFolder'."
+            }
+            $response = (Invoke-WebRequest "http://localhost" -UseBasicParsing);
+            log -msg "[✔] Basic request to 'http://localhost' returned the following: '$($response.StatusCode) $($response.StatusDescription)'"
+
+            # Double-check that we have the AWS functions available:
             log -msg "AWSPowerShellVersion Info:`n$(Get-AWSPowerShellVersion -ListServiceVersionInfo)"
 
             # Download the contents of the configuration bucket
             if (Get-S3Object -BucketName $S3BucketUrl) {
                 Read-S3Object -BucketName $S3BucketUrl -KeyPrefix $S3BucketFolder -Folder $LocalScriptFolder
                 log -msg "[✔] The contents of the folder '$S3BucketFolder' in the S3Bucket '$S3BucketUrl' have been downloaded to '$LocalScriptFolder'."
-            } else {
+            }
+            else {
                 log "Error" "[❌] S3 Bucket at '$S3BucketUrl' is not accessible."
             }
+
+            # TODO: Load all the required parameters into environment variables
             
             # Run each script that was downloaded
             foreach ($script in $(Get-ChildItem -Path $LocalScriptFolder)) {
@@ -69,6 +81,6 @@
     }
 
     END {
-        log -msg "[✔] ""$PSCommandPath"" has completed successfully."
+        log -msg "$(if ($PSCommandPath) { "'$PSCommandPath'" } else { "Initialisation" }) has completed successfully."
     }
 };
