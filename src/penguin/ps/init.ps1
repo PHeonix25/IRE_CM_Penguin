@@ -32,13 +32,15 @@
         log -msg "[✔] PowerShell Module 'AWS.Tools.S3' availability has been confirmed."
 
         if ($(Get-WindowsFeature Web-Server).InstallState -ne "Installed") {
+            log "Warn" "Windows Feature 'Web-Server' needs to be enabled for the healthchecks to work. Configuring now."
             Install-WindowsFeature Web-Server -IncludeManagementTools;
-            Write-Output "<h1>Hello World</h1>" | Out-File -FilePath "C:\inetpub\wwwroot\index.html";
-            log -msg "[✔] IIS has been enabled & 'HelloWorld' dumped to local folder."
-
-            $response = (Invoke-WebRequest "http://localhost" -UseBasicParsing)
-            log -msg "Basic request to 'http://localhost' returned the following: `n'$($response.StatusCode) $($response.StatusDescription)'"
+            log -msg "[✔] IIS has been enabled."
         }
+
+        Write-Output "<h1>Hello World</h1>" | Out-File -FilePath "C:\inetpub\wwwroot\index.html";
+        log -msg "[✔] 'HelloWorld' dumped to local folder."
+        $response = (Invoke-WebRequest "http://localhost" -UseBasicParsing);
+        log -msg "Basic request to 'http://localhost' returned the following: `n'$($response.StatusCode) $($response.StatusDescription)'"
     }
 
     PROCESS {
