@@ -35,25 +35,25 @@
  [MANDATORY] [Alias: thumb]
  The thumbprint for your OctopusServer (so that the Tentacle knows to trust it)
  
-.PARAMETER TentacleInstanceName
+.PARAMETER OctopusTentacleInstanceName
  The name that you want this instance to have.
  [DEFAULT VALUE: Machine Host Name]
 
-.PARAMETER TentaclePort
+.PARAMETER OctopusTentaclePort
  The port that you want the OctopusDeploy Tentacle communication to happen on
  [DEFAULT VALUE: 10933]
 
-.PARAMETER OctopusRootFolder
+.PARAMETER OctopusTentacleRootFolder
  The folder that you want Octopus Tentacle config (& application deployments) to live in
  [DEFAULT VALUE: "C:\Octopus\"]
 
-.PARAMETER TentacleRoles
+.PARAMETER OctopusTentacleRoles
  An array of roles that this Tentacle should be registered with.
  These will be iterated over during configuration, so even if you have a single value, 
  please provide it as an array of one item.
  [DEFAULT VALUE: Array of one empty string `@("")`]
 
-.PARAMETER TentacleEnvironment
+.PARAMETER OctopusTentacleEnvironment
  The environment that this Tentacle should be registered to.
  [DEFAULT VALUE: "Dev"]
 
@@ -68,7 +68,7 @@ https://octopus.com/docs/infrastructure/deployment-targets/windows-targets/autom
 
 .EXAMPLE 
  PS> # When using command-line parameters & default values
- PS> Set-OctopusDeployTentacleConfiguration -OctopusServerUrl "http://localhost:8080" -OctopusServerApiKey "API-XXXXX" -OctopusServerThumbprint "123456ABCDEF" -TentacleRoles @("web-app") 
+ PS> Set-OctopusDeployTentacleConfiguration -OctopusServerUrl "http://localhost:8080" -OctopusServerApiKey "API-XXXXX" -OctopusServerThumbprint "123456ABCDEF" -OctopusTentacleRoles @("web-app") 
 
 .EXAMPLE 
  PS> # When using aliases & default values
@@ -77,8 +77,8 @@ https://octopus.com/docs/infrastructure/deployment-targets/windows-targets/autom
 .EXAMPLE 
  PS> # Using all parameters
  PS> Set-OctopusDeployTentacleConfiguration -OctopusServerUrl "http://localhost:8080" -OctopusServerApiKey "API-XXXXX" `
-      -OctopusServerThumbprint "123456ABCDEF" -TentacleRoles @("web-app") -TentacleInstanceName "HOST1234" `
-      -TentaclePort 10934 -OctopusRootFolder "C:\Octo" -TentacleEnvironment "Test"
+      -OctopusServerThumbprint "123456ABCDEF" -OctopusTentacleRoles @("web-app") -OctopusTentacleInstanceName "HOST1234" `
+      -OctopusTentaclePort 10934 -OctopusTentacleRootFolder "C:\Octo" -OctopusTentacleEnvironment "Test"
 
 .EXAMPLE 
  PS> # Using all parameters via their aliases
@@ -88,27 +88,53 @@ https://octopus.com/docs/infrastructure/deployment-targets/windows-targets/autom
 function Set-OctopusDeployTentacleConfiguration {
     [CmdletBinding()]
     param (
-        [Parameter(Mandatory)][ValidateNotNull()][Alias("server")][string]$OctopusServerUrl,
-        [Parameter(Mandatory)][ValidateNotNull()][Alias("apikey")][string]$OctopusServerApiKey,
-        [Parameter(Mandatory)][ValidateNotNull()][Alias("thumb")][string]$OctopusServerThumbprint, #"98D36D7A06413DDB520F80F8BB42D1C1B877B21A"#
-        [Alias("name")][string]$TentacleInstanceName,
-        [Alias("port")][uint]$TentaclePort = 10933,
-        [Alias("folder")][string]$OctopusRootFolder = "C:\Octopus",
-        [Alias("roles")][ValidateLength(1,10)][string[]]$TentacleRoles = @(""),
-        [Alias("env")][string]$TentacleEnvironment = "Dev"
+        [Alias("server")][string]$OctopusServerUrl,
+        [Alias("apikey")][string]$OctopusServerApiKey,
+        [Alias("thumb")][string]$OctopusServerThumbprint,
+        [Alias("name")][string]$OctopusTentacleInstanceName,
+        [Alias("port")][uint]$OctopusTentaclePort = 10933,
+        [Alias("folder")][string]$OctopusTentacleRootFolder = "C:\Octopus",
+        [Alias("roles")][ValidateLength(1,10)][string[]]$OctopusTentacleRoles = @(""),
+        [Alias("env")][string]$OctopusTentacleEnvironment = "Dev"
     )
 
     BEGIN {
         Write-Verbose "=> '$PSCommandPath' has started.";
     
-        # Validate/assign parameters
-        if (-not $TentacleInstanceName) {
-            Write-Warning "TentacleInstanceName variable not provided, defaulting to ComputerName"
-            $TentacleInstanceName = $ENV:COMPUTERNAME ?? [Environment]::MachineName ?? [System.Net.Dns]::GetHostName()
+        # Fall-back to ENV VARS, if not provided as parameters
+        if ((-not $OctopusServerUrl) -and $ENV:OctopusServerUrl) {
+            $OctopusServerUrl = $ENV:OctopusServerUrl
+            Write-Verbose "OctopusDeploy Server URL loaded from matching environment variable."
         }
-        if (-not $TentacleRoles) {
+        if ((-not $OctopusServerApiKey) -and $ENV:OctopusServerApiKey) {
+            $OctopusServerApiKey = $ENV:OctopusServerApiKey
+            Write-Verbose "OctopusDeploy Server API KEY loaded from matching environment variable."
+        }
+        if ((-not $OctopusServerThumbprint) -and $ENV:OctopusServerThumbprint) {
+            $OctopusServerThumbprint = $ENV:OctopusServerThumbprint
+            Write-Verbose "OctopusDeploy Server THUMBPRINT loaded from matching environment variable."
+        }
+
+        # Validate/assign parameters
+        if (-not $OctopusServerUrl) {
+            Write-Error "OctopusServer URL is not available. Script cannot continue."
+            throw [System.ArgumentNullException] "OctopusServerUrl"
+        }
+        if (-not $OctopusServerApiKey) {
+            Write-Error "OctopusServer API Key is not available. Script cannot continue."
+            throw [System.ArgumentNullException] "OctopusServerApiKey"
+        }
+        if (-not $OctopusServerThumbprint) {
+            Write-Error "OctopusServer Thumbprint is not available. Script cannot continue."
+            throw [System.ArgumentNullException] "OctopusServerThumbprint"
+        }
+        if (-not $OctopusTentacleInstanceName) {
+            Write-Warning "OctopusTentacleInstanceName variable not provided, defaulting to ComputerName"
+            $OctopusTentacleInstanceName = $ENV:ComputerName ?? [Environment]::MachineName ?? [System.Net.Dns]::GetHostName()
+        }
+        if (-not $OctopusTentacleRoles) {
             Write-Error "No roles are assigned to this instance, cannot continue until roles are provided."
-            throw [System.ArgumentNullException]("TentacleRoles");
+            throw [System.ArgumentNullException] "OctopusTentacleRoles";
         }
 
         # Assign global variables
@@ -154,46 +180,47 @@ function Set-OctopusDeployTentacleConfiguration {
             }
 
             # create-instance (default configuration)
-            $arguments = "create-instance --instance ""$TentacleInstanceName"" --config ""$OctopusRootFolder\Tentacle.config"" --console"
+            $arguments = "create-instance --instance ""$OctopusTentacleInstanceName"" --config ""$OctopusTentacleRootFolder\Tentacle.config"" --console"
             Write-Verbose "Executing: '$InstalledTentacleExe $arguments'"
             Start-Process $InstalledTentacleExe -ArgumentList $arguments -Wait
 
             # new-certificate --if-blank
-            $arguments = "new-certificate --instance ""$TentacleInstanceName"" --if-blank --console"
+            $arguments = "new-certificate --instance ""$OctopusTentacleInstanceName"" --if-blank --console"
             Write-Verbose "Executing: '$InstalledTentacleExe $arguments'"
             Start-Process $InstalledTentacleExe -ArgumentList $arguments -Wait
 
             # --reset-trust
-            $arguments = "configure --instance ""$TentacleInstanceName"" --reset-trust --console"
+            $arguments = "configure --instance ""$OctopusTentacleInstanceName"" --reset-trust --console"
             Write-Verbose "Executing: '$InstalledTentacleExe $arguments'"
             Start-Process $InstalledTentacleExe -ArgumentList $arguments -Wait
 
             # --home && --app && --port
-            $arguments = "configure --instance ""$TentacleInstanceName"" --home ""$OctopusRootFolder\"" --app ""$OctopusRootFolder\Applications"" --port ""$TentaclePort"" --console"
+            $arguments = "configure --instance ""$OctopusTentacleInstanceName"" --home ""$OctopusTentacleRootFolder\"" --app ""$OctopusTentacleRootFolder\Applications"" --port ""$OctopusTentaclePort"" --console"
             Write-Verbose "Executing: '$InstalledTentacleExe $arguments'"
             Start-Process $InstalledTentacleExe -ArgumentList $arguments -Wait
 
             # --trust "YOUR_OCTOPUS_THUMBPRINT"
-            $arguments = "configure --instance ""$TentacleInstanceName"" --trust ""$LoggingReplacement"" --console"
+            $arguments = "configure --instance ""$OctopusTentacleInstanceName"" --trust ""$LoggingReplacement"" --console"
             Write-Verbose "Executing: '$InstalledTentacleExe $arguments'"
             $arguments = $arguments.Replace($LoggingReplacement, $OctopusServerThumbprint)
             Start-Process $InstalledTentacleExe -ArgumentList $arguments -Wait
 
             # Open firewall
-            $arguments = "advfirewall firewall add rule ""name=Octopus Deploy Tentacle"" dir=in action=allow protocol=TCP localport=$TentaclePort"
+            $arguments = "advfirewall firewall add rule ""name=Octopus Deploy Tentacle"" dir=in action=allow protocol=TCP localport=$OctopusTentaclePort"
             Write-Verbose "Executing: '""netsh"" $arguments'"
             Start-Process """netsh""" -ArgumentList $arguments -Wait
 
             # register-with --server "http://YOUR_OCTOPUS" --apiKey="API-YOUR_API_KEY" --role "XXX" --environment "YYY" --comms-style TentaclePassive --console
-            foreach ($role in $TentacleRoles) { # Need to 'register' once per desired role:
-                $arguments = "register-with --instance ""$TentacleInstanceName"" --server ""$OctopusServerUrl"" --apiKey=""$LoggingReplacement"" --role ""$role"" --environment ""$TentacleEnvironment"" --comms-style TentaclePassive --console"
+            foreach ($role in $OctopusTentacleRoles) { # Need to 'register' once per desired role:
+                $arguments = "register-with --instance ""$OctopusTentacleInstanceName"" --server ""$OctopusServerUrl"" --apiKey ""$LoggingReplacement"" `
+                    --role ""$role"" --environment ""$OctopusTentacleEnvironment"" --comms-style ""TentaclePassive"" --console"
                 Write-Verbose "Executing: '$InstalledTentacleExe $arguments'"
                 $arguments = $arguments.Replace($LoggingReplacement, $OctopusServerApiKey)
                 Start-Process $InstalledTentacleExe -ArgumentList $arguments -Wait
             }
 
             # service --instance "Tentacle" --install --start --console
-            $arguments = "service --instance ""$TentacleInstanceName"" --install --start --console"
+            $arguments = "service --instance ""$OctopusTentacleInstanceName"" --install --start --console"
             Write-Verbose "Executing: '$InstalledTentacleExe $arguments'"
             Start-Process $InstalledTentacleExe -ArgumentList $arguments -Wait
 

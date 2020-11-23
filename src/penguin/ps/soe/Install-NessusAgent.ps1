@@ -59,10 +59,10 @@ function Install-NessusAgent {
 
         # Validate/assign parameters
         if (-not $NessusGroups) {
-            throw [System.ArgumentNullException]("NessusGroups")
+            throw [System.ArgumentNullException] "NessusGroups"
         }
         if (-not $NessusServer) {
-            throw [System.ArgumentNullException]("NessusServer")
+            throw [System.ArgumentNullException] "NessusServer"
         }
 
         # Assign global variables
