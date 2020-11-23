@@ -1,11 +1,11 @@
 & {
     BEGIN {
-        $S3BucketUrl = { { REPLACE_ME } }
-        $S3BucketFolder = "soe_config"
+        $S3BucketUrl = {{S3_BUCKET_URL}}
+        $S3BucketFolder = {{S3_BUCKET_FOLDER}}
         $LocalScriptFolder = "C:\Configuration"
         $LocalWwwrootFolder = "C:\inetpub\wwwroot\index.html"
         $EventLogSource = "Cover-More SOE Customisation"
-        
+
         Import-Module Microsoft.PowerShell.Management
         if (-not ([System.Diagnostics.EventLog]::SourceExists($EventLogSource))) {
             Write-Warning "Event log source not located, creating now."
@@ -17,6 +17,7 @@
                 return;
             }
         }
+
         function log { 
             param([System.Diagnostics.EventLogEntryType]$type = "Information", [string]$msg)
             Write-EventLog -LogName "Application" -Source $EventLogSource -EntryType $type -EventID 1 -Category 1 -Message $msg 
@@ -27,7 +28,6 @@
     }
 
     PROCESS {
-
         try {
             # Ensure we have prerequisite modules/features available
             # Check that the AWS.Tools.S3 module is available:
@@ -65,9 +65,28 @@
             else {
                 log "Error" "[❌] S3 Bucket at '$S3BucketUrl' is not accessible."
             }
-
-            # TODO: Load all the required parameters into environment variables
             
+            # Load Environment Variables if they are defined/available
+            $EnvVarsFile = (Join-Path $LocalScriptFolder "_env.ps1")
+            if (Test-Path $EnvVarsFile) { 
+                . $EnvVarsFile; 
+                log -msg "[✔] Environment variables were loaded from file: '$EnvVarsFile'."; 
+            } else {
+                # Load known environment variables for downloaded scripts:
+                $ENV:NessusKey = {{NESSUS_KEY}}
+                $ENV:NessusGroups = "IRE-CM-LZ"
+                $ENV:NessusServer = "cloud.tenable.com"
+                $ENV:OctopusServerUrl = "octopus.covermore.com"
+                $ENV:OctopusServerApiKey = {{OCTOSERVER_APIKEY}}
+                $ENV:OctopusServerThumbprint = {{OCTOSERVER_THUMB}}
+                $ENV:OctopusTentacleInstanceName = $null # will default to instance name
+                $ENV:OctopusTentaclePort = 10933
+                $ENV:OctopusTentacleRootFolder = "C:\Octopus"
+                $ENV:OctopusTentacleRoles = @("")
+                $ENV:OctopusTentacleEnvironment = "Dev1"
+                log "Warn" "Environment variables were loaded directly from the inline script.";
+            }
+
             # Run each script that was downloaded
             foreach ($script in $(Get-ChildItem -Path $LocalScriptFolder)) {
                 Start-Process -FilePath $script.FullName -Wait
