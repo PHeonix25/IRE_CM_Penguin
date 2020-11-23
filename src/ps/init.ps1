@@ -87,8 +87,8 @@
                 log "Warn" "Environment variables were loaded directly from the inline script.";
             }
 
-            # Run each script that was downloaded
-            foreach ($script in $(Get-ChildItem -Path $LocalScriptFolder)) {
+            # Run each script that was downloaded, excluding any prefixed with underscore
+            foreach ($script in $(Get-ChildItem -Path $LocalScriptFolder -Exclude "_*")) {
                 Start-Process -FilePath $script.FullName -Wait
                 log -msg "[✔] Configuration script '$($script.FullName)' completed.";
             }
