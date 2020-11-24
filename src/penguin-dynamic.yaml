@@ -37,6 +37,13 @@ Parameters:
     Description: "The Route 53 Hosted Zone ID of the application account hosted zone."
     Type: String
 
+  PenguinInfraBucketName:
+    Type: String
+  
+  PenguinInfraBucketFolder:
+    Type: String
+    Default: "soe/"
+
   PenguinPublicSubnetId1Az1:
     Type: String
     Description: "The Subnet ID of Public Subnet A"
@@ -74,7 +81,7 @@ Mappings:
       ApplicationSubnetAz2: 10.110.33.128/25
       DatabaseSubnetAz1: 10.110.34.0/25
       DatabaseSubnetAz2: 10.110.34.128/25
-      PenguinEc2InstanceSize: t3.medium
+      PenguinEc2InstanceSize: t3.xlarge
       ScalingGroupMin: 1
       ScalingGroupMax: 1
       LogRetentionInDays: 7
@@ -88,7 +95,7 @@ Mappings:
       ApplicationSubnetAz2: 10.110.41.128/25
       DatabaseSubnetAz1: 10.110.42.0/25
       DatabaseSubnetAz2: 10.110.42.128/25
-      PenguinEc2InstanceSize: t3.medium
+      PenguinEc2InstanceSize: t3.xlarge
       ScalingGroupMin: 1
       ScalingGroupMax: 1
       LogRetentionInDays: 7
@@ -102,7 +109,7 @@ Mappings:
       ApplicationSubnetAz2: 10.110.49.128/25
       DatabaseSubnetAz1: 10.110.50.0/25
       DatabaseSubnetAz2: 10.110.50.128/25
-      PenguinEc2InstanceSize: t3.medium
+      PenguinEc2InstanceSize: t3.xlarge
       ScalingGroupMin: 1
       ScalingGroupMax: 1
       LogRetentionInDays: 7
@@ -116,7 +123,7 @@ Mappings:
       ApplicationSubnetAz2: 10.110.57.128/25
       DatabaseSubnetAz1: 10.110.58.0/25
       DatabaseSubnetAz2: 10.110.58.128/25
-      PenguinEc2InstanceSize: t3.medium
+      PenguinEc2InstanceSize: t3.xlarge
       ScalingGroupMin: 1
       ScalingGroupMax: 1
       LogRetentionInDays: 7
@@ -130,7 +137,7 @@ Mappings:
       ApplicationSubnetAz2: 10.110.17.128/25
       DatabaseSubnetAz1: 10.110.18.0/25
       DatabaseSubnetAz2: 10.110.18.128/25
-      PenguinEc2InstanceSize: t3.medium
+      PenguinEc2InstanceSize: t3.xlarge
       ScalingGroupMin: 1
       ScalingGroupMax: 1
       LogRetentionInDays: 7
@@ -144,7 +151,7 @@ Mappings:
       ApplicationSubnetAz2: 10.110.9.128/25
       DatabaseSubnetAz1: 10.110.10.0/25
       DatabaseSubnetAz2: 10.110.10.128/25
-      PenguinEc2InstanceSize: m5.large
+      PenguinEc2InstanceSize: m5.xlarge
       ScalingGroupMin: 2
       ScalingGroupMax: 2
       LogRetentionInDays: 7
@@ -158,7 +165,7 @@ Mappings:
       ApplicationSubnetAz2: 10.110.1.128/25
       DatabaseSubnetAz1: 10.110.2.0/25
       DatabaseSubnetAz2: 10.110.2.128/25
-      PenguinEc2InstanceSize: m5.large
+      PenguinEc2InstanceSize: m5.xlarge
       ScalingGroupMin: 3
       ScalingGroupMax: 5
       LogRetentionInDays: 7
@@ -184,6 +191,14 @@ Resources:
           FromPort: 443
           ToPort: 443
           CidrIp: !FindInMap [PenguinEnvironmentSettings, !Ref PenguinEnvironment, ApplicationSubnetAz2]
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: !FindInMap [PenguinEnvironmentSettings, !Ref PenguinEnvironment, ApplicationSubnetAz1]
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: !FindInMap [PenguinEnvironmentSettings, !Ref PenguinEnvironment, ApplicationSubnetAz2]
   
   PenguinApplicationSecGroup:
     Type: 'AWS::EC2::SecurityGroup'
@@ -193,8 +208,14 @@ Resources:
       VpcId: !Ref PenguinVpcId
       SecurityGroupIngress:
         - IpProtocol: tcp
+          Description: "ALB Traffic"
           FromPort: 443
           ToPort: 443
+          SourceSecurityGroupId: !GetAtt [PenguinPublicAlbSecGroup, GroupId]
+        - IpProtocol: tcp
+          Description: "Temporary health check on 80"
+          FromPort: 80
+          ToPort: 80
           SourceSecurityGroupId: !GetAtt [PenguinPublicAlbSecGroup, GroupId]
         - IpProtocol: tcp
           Description: "Comms from Octopus code deployment"
@@ -229,10 +250,6 @@ Resources:
           ToPort: 80
           CidrIp: 0.0.0.0/0
         - IpProtocol: tcp
-          FromPort: 443
-          ToPort: 443
-          DestinationSecurityGroupId: !GetAtt [PenguinPublicAlbSecGroup, GroupId]
-        - IpProtocol: tcp
           Description: "Comms to EMEA MS SQL servers"
           FromPort: 1433
           ToPort: 1433
@@ -242,21 +259,6 @@ Resources:
           FromPort: 1433
           ToPort: 1433
           CidrIp: !FindInMap [PenguinEnvironmentSettings, !Ref PenguinEnvironment, DatabaseSubnetAz2]
-        - IpProtocol: tcp
-          Description: "Comms to ULWEBn existing on prem."
-          FromPort: 80
-          ToPort: 80
-          CidrIp: 10.2.4.0/24
-        - IpProtocol: tcp
-          Description: "Comms to ULWEBn existing on prem."
-          FromPort: 443
-          ToPort: 443
-          CidrIp: 10.2.4.0/24
-        - IpProtocol: tcp
-          Description: "Comms to Payment Gateway Application Subnets on Shared Services account"
-          FromPort: 443
-          ToPort: 443
-          CidrIp: 10.110.25.0/24
         - IpProtocol: "-1"
           FromPort: -1
           ToPort: -1
@@ -304,43 +306,114 @@ Resources:
               KmsKeyId: !Ref PenguinKmsCmkArn
         UserData: !Base64 
           'Fn::Sub': >
+            <powershell>
             & {
-              BEGIN {
-                  $ScriptName = "Cover-More SOE Customisation"
-                  Import-Module Microsoft.PowerShell.Management -UseWindowsPowerShell
-                  if (-not (Get-EventLog -LogName Application -Source $ScriptName)) {
-                      Write-Warning "Event log source not located, creating now."
-                      try {
-                          New-EventLog -LogName Application -Source $ScriptName;
-                      }
-                      catch {
-                          Write-Error "Event log source could not be created. Please try again as an Administrator."
-                          return;
-                      }
-                  }
-                  function log { 
-                      param([System.Diagnostics.EventLogEntryType]$type = "Information", [string]$msg)
-                      Write-EventLog -LogName "Application" -Source $ScriptName -EntryType $type –EventID 1 -Category 1 -Message $msg 
-                      Write-Output "$type`t`t$msg"
-                  }
-                  log -msg """$PSCommandPath"" has started."
-              }
-              PROCESS {
-                  try {
-                      # Run NessusAgent script
-                      log -msg "Pretend I ran the NessusAgent script [✔]"
-                      # Run Tentacle script
-                      log -msg "Pretend I ran the Tentacle script [✔]"
-                  }
-                  catch {
-                      log "Error" "An error occurred that could not be automatically resolved: $_"
-                      throw $_;
-                  }
-              }
-              END {
-                  log -msg """$PSCommandPath"" has completed successfully."
-              }
-            };        
+                BEGIN {
+                    $S3BucketUrl = ${PenguinInfraBucketName}
+                    $S3BucketFolder = ${PenguinInfraBucketFolder}
+                    $LocalScriptFolder = "C:\Configuration"
+                    $LocalWwwrootFolder = "C:\inetpub\wwwroot\index.html"
+                    $EventLogSource = "Cover-More SOE Customisation"
+
+                    Import-Module Microsoft.PowerShell.Management
+                    if (-not ([System.Diagnostics.EventLog]::SourceExists($EventLogSource))) {
+                        Write-Warning "Event log source not located, creating now."
+                        try {
+                            New-EventLog -LogName Application -Source $EventLogSource;
+                        }
+                        catch {
+                            Write-Error "Event log source could not be created. Please try again as an Administrator."
+                            return;
+                        }
+                    }
+
+                    function log { 
+                        param([System.Diagnostics.EventLogEntryType]$type = "Information", [string]$msg)
+                        Write-EventLog -LogName "Application" -Source $EventLogSource -EntryType $type -EventID 1 -Category 1 -Message $msg 
+                        Write-Output "$type`t`t$msg"
+                    }
+
+                    log -msg "$(if ($PSCommandPath) { "'$PSCommandPath'" } else { "Initialisation" }) has started."
+                }
+
+                PROCESS {
+                    try {
+                        # Ensure we have prerequisite modules/features available
+                        # Check that the AWS.Tools.S3 module is available:
+                        if ($null -eq $(Get-Module AWS.Tools.S3)) {
+                            log "Warn" "PowerShell Module 'AWS.Tools.S3' needs to be installed & available for this script to function. Installing now."
+                            Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force;
+                            Install-Module -Name AWS.Tools.S3 -Force;
+                            Import-Module -Name AWS.Tools.S3;
+                        }
+                        log -msg "[✔] PowerShell Module 'AWS.Tools.S3' availability has been confirmed."
+                
+                        # Check that IIS is installed/enabled
+                        if ($(Get-WindowsFeature Web-Server).InstallState -ne "Installed") {
+                            log "Warn" "Windows Feature 'Web-Server' needs to be enabled for the healthchecks to work. Configuring now."
+                            Install-WindowsFeature Web-Server -IncludeManagementTools;
+                        }
+                        log -msg "[✔] IIS has been enabled."
+
+                        # Make sure there is a basic index.html available to answer requests
+                        if (-not (Get-Item -Path $LocalWwwrootFolder)) {
+                            Write-Output "<h1>Hello World</h1>" | Out-File -FilePath $LocalWwwrootFolder;
+                            log -msg "[✔] 'Hello World' index.html dumped to local wwwroot folder: '$LocalWwwrootFolder'."
+                        }
+                        $response = (Invoke-WebRequest "http://localhost" -UseBasicParsing);
+                        log -msg "[✔] Basic request to 'http://localhost' returned the following: '$($response.StatusCode) $($response.StatusDescription)'"
+
+                        # Double-check that we have the AWS functions available:
+                        log -msg "AWSPowerShellVersion Info:`n$(Get-AWSPowerShellVersion -ListServiceVersionInfo)"
+
+                        # Download the contents of the configuration bucket
+                        if (Get-S3Object -BucketName $S3BucketUrl) {
+                            Read-S3Object -BucketName $S3BucketUrl -KeyPrefix $S3BucketFolder -Folder $LocalScriptFolder
+                            log -msg "[✔] The contents of the folder '$S3BucketFolder' in the S3Bucket '$S3BucketUrl' have been downloaded to '$LocalScriptFolder'."
+                        }
+                        else {
+                            log "Error" "[❌] S3 Bucket at '$S3BucketUrl' is not accessible."
+                        }
+                        
+                        # Load Environment Variables if they are defined/available
+                        $EnvVarsFile = (Join-Path $LocalScriptFolder "_env.ps1")
+                        if (Test-Path $EnvVarsFile) { 
+                            . $EnvVarsFile; 
+                            log -msg "[✔] Environment variables were loaded from file: '$EnvVarsFile'."; 
+                        } else {
+                            # Load known environment variables for downloaded scripts:
+                            $ENV:NessusKey = {{NESSUS_KEY}}
+                            $ENV:NessusGroups = "IRE-CM-LZ"
+                            $ENV:NessusServer = "cloud.tenable.com"
+                            $ENV:OctopusServerUrl = "octopus.covermore.com"
+                            $ENV:OctopusServerApiKey = {{OCTOSERVER_APIKEY}}
+                            $ENV:OctopusServerThumbprint = {{OCTOSERVER_THUMB}}
+                            $ENV:OctopusTentacleInstanceName = $null # will default to instance name
+                            $ENV:OctopusTentaclePort = 10933
+                            $ENV:OctopusTentacleRootFolder = "C:\Octopus"
+                            $ENV:OctopusTentacleRoles = @("")
+                            $ENV:OctopusTentacleEnvironment = "Dev1"
+                            log "Warn" "Environment variables were loaded directly from the inline script.";
+                        }
+
+                        # Run each script that was downloaded, excluding any prefixed with underscore
+                        foreach ($script in $(Get-ChildItem -Path $LocalScriptFolder -Exclude "_*")) {
+                            Start-Process -FilePath $script.FullName -Wait
+                            log -msg "[✔] Configuration script '$($script.FullName)' completed.";
+                        }
+                    }
+                    catch {
+                        log "Error" "[❌] An error occurred that could not be automatically resolved: $_"
+                        throw $_;
+                    }
+                }
+
+                END {
+                    log -msg "$(if ($PSCommandPath) { "'$PSCommandPath'" } else { "Initialisation" }) has completed successfully."
+                }
+            };
+            </powershell>
+            <persist>true</persist>
   
   PenguinApplicationScalingGroup:
     Type: 'AWS::AutoScaling::AutoScalingGroup'
@@ -367,7 +440,7 @@ Resources:
       VPCZoneIdentifier:
         - !Ref PenguinApplicationSubnetIdAz1
         - !Ref PenguinApplicationSubnetIdAz2
-      HealthCheckGracePeriod: 300
+      HealthCheckGracePeriod: 900
       HealthCheckType: ELB
       LaunchTemplate:
         LaunchTemplateId: !Ref PenguinApiLaunchTemplate
@@ -402,16 +475,16 @@ Resources:
     Properties:
       Name: Penguin-Api-Application-Servers
       HealthCheckIntervalSeconds: 30
-      HealthCheckPath: /health.html
-      HealthCheckPort: '443'
-      HealthCheckProtocol: HTTPS
+      HealthCheckPath: /
+      HealthCheckPort: '80'
+      HealthCheckProtocol: HTTP
       HealthCheckTimeoutSeconds: 5
       HealthyThresholdCount: 3
+      UnhealthyThresholdCount: 5
       Port: 443
       Protocol: HTTPS
       Matcher:
         HttpCode: '200'
-      UnhealthyThresholdCount: 5
       TargetGroupAttributes:
         - Key: stickiness.enabled
           Value: 'true'
@@ -479,6 +552,12 @@ Resources:
     Type: 'AWS::Logs::LogGroup'
     Properties:
       LogGroupName: !Sub 'customer-penguin-${PenguinEnvironment}-web_other-log'
+      RetentionInDays: !FindInMap [PenguinEnvironmentSettings, !Ref PenguinEnvironment, LogRetentionInDays]
+
+  PenguinTentacleLogGroup:
+    Type: 'AWS::Logs::LogGroup'
+    Properties:
+      LogGroupName: !Sub 'customer-penguin-${PenguinEnvironment}-tentacle-log'
       RetentionInDays: !FindInMap [PenguinEnvironmentSettings, !Ref PenguinEnvironment, LogRetentionInDays]
 
   PenguinAlbRoute53Record:
