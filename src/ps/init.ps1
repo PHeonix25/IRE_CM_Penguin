@@ -1,6 +1,6 @@
 & {
     BEGIN {
-        $S3BucketUrl = ${PenguinInfraBucketName}
+        $S3BucketName = ${PenguinInfraBucketName}
         $S3BucketFolder = ${PenguinInfraBucketFolder}
         $LocalScriptFolder = "C:\Configuration"
         $LocalHelloWorldFile = "C:\inetpub\wwwroot\index.html"
@@ -62,12 +62,12 @@
             log -msg "AWSPowerShellVersion Info:`n$(Get-AWSPowerShellVersion -ListServiceVersionInfo)"
             
             # Download the contents of the configuration bucket
-            if (Get-S3Object -BucketName $S3BucketUrl) {
-                Read-S3Object -BucketName $S3BucketUrl -KeyPrefix $S3BucketFolder -Folder $LocalScriptFolder
-                log -msg "[✔] The contents of the folder '$S3BucketFolder' in the S3Bucket '$S3BucketUrl' have been downloaded to '$LocalScriptFolder'."
+            if (Get-S3Object -BucketName $S3BucketName) {
+                Read-S3Object -BucketName $S3BucketName -KeyPrefix $S3BucketFolder -Folder $LocalScriptFolder
+                log -msg "[✔] The contents of the '$S3BucketFolder' folder in the '$S3BucketName' S3Bucket have been downloaded to '$LocalScriptFolder'."
             }
             else {
-                log "Error" "[❌] S3 Bucket at '$S3BucketUrl' is not accessible."
+                log "Error" "[❌] S3 Bucket at '$S3BucketName' is not accessible."
             }
 
             # Load Environment Variables if they are defined/available
