@@ -1,7 +1,7 @@
 & {
     BEGIN {
-        $S3BucketUrl = {{S3_BUCKET_URL}}
-        $S3BucketFolder = {{S3_BUCKET_FOLDER}}
+        $S3BucketUrl = {{PenguinInfraBucketUrl}}
+        $S3BucketFolder = {{PenguinInfraBucketFolder}}
         $LocalScriptFolder = "C:\Configuration"
         $LocalWwwrootFolder = "C:\inetpub\wwwroot\index.html"
         $EventLogSource = "Cover-More SOE Customisation"
