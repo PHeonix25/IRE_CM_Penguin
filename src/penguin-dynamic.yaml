@@ -428,19 +428,19 @@ Resources:
       - PenguinWebOtherLogGroup
     CreationPolicy:
       ResourceSignal:
-        Timeout: PT15M
+        Timeout: PT30M
         Count: !FindInMap [PenguinEnvironmentSettings, !Ref PenguinEnvironment, ScalingGroupMin]
     UpdatePolicy:
       AutoScalingRollingUpdate:
         MaxBatchSize: 1
         MinInstancesInService: 1
-        PauseTime: PT15M
+        PauseTime: PT30M
         WaitOnResourceSignals: true
     Properties:
       VPCZoneIdentifier:
         - !Ref PenguinApplicationSubnetIdAz1
         - !Ref PenguinApplicationSubnetIdAz2
-      HealthCheckGracePeriod: 900
+      HealthCheckGracePeriod: 1800
       HealthCheckType: ELB
       LaunchTemplate:
         LaunchTemplateId: !Ref PenguinApiLaunchTemplate
