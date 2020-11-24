@@ -1,9 +1,9 @@
 & {
     BEGIN {
-        $S3BucketUrl = {{PenguinInfraBucketUrl}}
-        $S3BucketFolder = {{PenguinInfraBucketFolder}}
+        $S3BucketUrl = ${PenguinInfraBucketName}
+        $S3BucketFolder = ${PenguinInfraBucketFolder}
         $LocalScriptFolder = "C:\Configuration"
-        $LocalWwwrootFolder = "C:\inetpub\wwwroot\index.html"
+        $LocalHelloWorldFile = "C:\inetpub\wwwroot\index.html"
         $EventLogSource = "Cover-More SOE Customisation"
 
         Import-Module Microsoft.PowerShell.Management
@@ -29,16 +29,20 @@
 
     PROCESS {
         try {
-            # Ensure we have prerequisite modules/features available
             # Check that the AWS.Tools.S3 module is available:
             if ($null -eq $(Get-Module AWS.Tools.S3)) {
                 log "Warn" "PowerShell Module 'AWS.Tools.S3' needs to be installed & available for this script to function. Installing now."
                 Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force;
+                log -msg "[✔] NuGet package provider has been installed."
                 Install-Module -Name AWS.Tools.S3 -Force;
+                log -msg "[✔] PowerShell Module 'AWS.Tools.S3' has been installed."
                 Import-Module -Name AWS.Tools.S3;
+                log -msg "[✔] PowerShell Module 'AWS.Tools.S3' has been imported into this session."
             }
-            log -msg "[✔] PowerShell Module 'AWS.Tools.S3' availability has been confirmed."
-    
+            else {
+                log -msg "[✔] PowerShell Module 'AWS.Tools.S3' availability has been confirmed."
+            }
+
             # Check that IIS is installed/enabled
             if ($(Get-WindowsFeature Web-Server).InstallState -ne "Installed") {
                 log "Warn" "Windows Feature 'Web-Server' needs to be enabled for the healthchecks to work. Configuring now."
@@ -47,16 +51,16 @@
             log -msg "[✔] IIS has been enabled."
 
             # Make sure there is a basic index.html available to answer requests
-            if (-not (Get-Item -Path $LocalWwwrootFolder)) {
-                Write-Output "<h1>Hello World</h1>" | Out-File -FilePath $LocalWwwrootFolder;
-                log -msg "[✔] 'Hello World' index.html dumped to local wwwroot folder: '$LocalWwwrootFolder'."
+            if (-not (Get-Item -Path $LocalHelloWorldFile)) {
+                Write-Output "<h1>Hello World</h1>" | Out-File -FilePath $LocalHelloWorldFile;
+                log -msg "[✔] 'Hello World' index.html dumped to local wwwroot folder: '$LocalHelloWorldFile'."
             }
             $response = (Invoke-WebRequest "http://localhost" -UseBasicParsing);
             log -msg "[✔] Basic request to 'http://localhost' returned the following: '$($response.StatusCode) $($response.StatusDescription)'"
 
             # Double-check that we have the AWS functions available:
             log -msg "AWSPowerShellVersion Info:`n$(Get-AWSPowerShellVersion -ListServiceVersionInfo)"
-
+            
             # Download the contents of the configuration bucket
             if (Get-S3Object -BucketName $S3BucketUrl) {
                 Read-S3Object -BucketName $S3BucketUrl -KeyPrefix $S3BucketFolder -Folder $LocalScriptFolder
@@ -65,20 +69,24 @@
             else {
                 log "Error" "[❌] S3 Bucket at '$S3BucketUrl' is not accessible."
             }
-            
+
             # Load Environment Variables if they are defined/available
             $EnvVarsFile = (Join-Path $LocalScriptFolder "_env.ps1")
             if (Test-Path $EnvVarsFile) { 
+                log -msg "[✔] File '$EnvVarsFile' exists. Loading environment variables from it."; 
                 . $EnvVarsFile; 
                 log -msg "[✔] Environment variables were loaded from file: '$EnvVarsFile'."; 
-            } else {
+            }
+            else {
+                log "Error" "[❌] File '$EnvVarsFile' not found. Executing fallback."; 
+
                 # Load known environment variables for downloaded scripts:
-                $ENV:NessusKey = {{NESSUS_KEY}}
+                $ENV:NessusKey = { { NESSUS_KEY } }
                 $ENV:NessusGroups = "IRE-CM-LZ"
                 $ENV:NessusServer = "cloud.tenable.com"
                 $ENV:OctopusServerUrl = "octopus.covermore.com"
-                $ENV:OctopusServerApiKey = {{OCTOSERVER_APIKEY}}
-                $ENV:OctopusServerThumbprint = {{OCTOSERVER_THUMB}}
+                $ENV:OctopusServerApiKey = { { OCTOSERVER_APIKEY } }
+                $ENV:OctopusServerThumbprint = { { OCTOSERVER_THUMB } }
                 $ENV:OctopusTentacleInstanceName = $null # will default to instance name
                 $ENV:OctopusTentaclePort = 10933
                 $ENV:OctopusTentacleRootFolder = "C:\Octopus"
@@ -86,9 +94,10 @@
                 $ENV:OctopusTentacleEnvironment = "Dev1"
                 log "Warn" "Environment variables were loaded directly from the inline script.";
             }
-
+            
             # Run each script that was downloaded, excluding any prefixed with underscore
             foreach ($script in $(Get-ChildItem -Path $LocalScriptFolder -Exclude "_*")) {
+                log -msg "[?] Configuration script '$($script.FullName)' executing now.";
                 Start-Process -FilePath $script.FullName -Wait
                 log -msg "[✔] Configuration script '$($script.FullName)' completed.";
             }
