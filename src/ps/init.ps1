@@ -20,7 +20,7 @@
 
         function log { 
             param([System.Diagnostics.EventLogEntryType]$type = "Information", [string]$msg)
-            Write-EventLog -LogName "Application" -Source $EventLogSource -EntryType $type -EventID 1 -Category 1 -Message $msg 
+            Write-EventLog -LogName "Application" -Source $EventLogSource -EntryType $type -EventID 1 -Message $msg 
             Write-Output "$type`t`t$msg"
         }
 
@@ -80,26 +80,26 @@
             else {
                 log "Error" "[❌] File '$EnvVarsFile' not found. Executing fallback."; 
 
-                # Load known environment variables for downloaded scripts:
-                $ENV:NessusKey = { { NESSUS_KEY } }
-                $ENV:NessusGroups = "IRE-CM-LZ"
-                $ENV:NessusServer = "cloud.tenable.com"
-                $ENV:OctopusServerUrl = "octopus.covermore.com"
-                $ENV:OctopusServerApiKey = { { OCTOSERVER_APIKEY } }
-                $ENV:OctopusServerThumbprint = { { OCTOSERVER_THUMB } }
-                $ENV:OctopusTentacleInstanceName = $null # will default to instance name
-                $ENV:OctopusTentaclePort = 10933
-                $ENV:OctopusTentacleRootFolder = "C:\Octopus"
-                $ENV:OctopusTentacleRoles = @("")
-                $ENV:OctopusTentacleEnvironment = "Dev1"
-                log "Warn" "Environment variables were loaded directly from the inline script.";
+                # # Load known environment variables for downloaded scripts:
+                # $ENV:NessusKey = {{NESSUS_KEY}}
+                # $ENV:NessusGroups = "IRE-CM-LZ"
+                # $ENV:NessusServer = "cloud.tenable.com"
+                # $ENV:OctopusServerUrl = "octopus.covermore.com"
+                # $ENV:OctopusServerApiKey = {{OCTOSERVER_APIKEY}}
+                # $ENV:OctopusServerThumbprint = {{OCTOSERVER_THUMB}}
+                # $ENV:OctopusTentacleInstanceName = $null # will default to instance name
+                # $ENV:OctopusTentaclePort = 10933
+                # $ENV:OctopusTentacleRootFolder = "C:\Octopus"
+                # $ENV:OctopusTentacleRoles = @("")
+                # $ENV:OctopusTentacleEnvironment = "Dev1"
+                # log "Warn" "Environment variables were loaded directly from the inline script.";
             }
             
             # Run each script that was downloaded, excluding any prefixed with underscore
             foreach ($script in $(Get-ChildItem -Path $LocalScriptFolder -Exclude "_*")) {
-                log -msg "[?] Configuration script '$($script.FullName)' executing now.";
-                Start-Process -FilePath $script.FullName -Wait
-                log -msg "[✔] Configuration script '$($script.FullName)' completed.";
+                log -msg "[?] Configuration script '$($script.FullName)' located. Executing now.";
+                # Start-Process -FilePath $script.FullName -Wait
+                log -msg "[✔] Execution of configuration script '$($script.FullName)' completed.";
             }
         }
         catch {
