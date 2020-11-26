@@ -1,5 +1,8 @@
 & {
     BEGIN {
+        # WinServer AMI's don't always specify TLS1.2, & PowerShell still defaults to TLS1.0 :rage:
+        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+
         $S3BucketName = ${PenguinInfraBucketName}
         $S3BucketFolder = ${PenguinInfraBucketFolder}
         $LocalScriptFolder = "C:\Configuration"
@@ -29,56 +32,63 @@
 
     PROCESS {
         try {
-            # Check that the AWS.Tools.S3 module is available:
-            if ($null -eq $(Get-Module AWS.Tools.S3)) {
-                log "Warn" "PowerShell Module 'AWS.Tools.S3' needs to be installed & available for this script to function. Installing now."
-                Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force;
-                log -msg "[✔] NuGet package provider has been installed."
-                Install-Module -Name AWS.Tools.S3 -Force;
-                log -msg "[✔] PowerShell Module 'AWS.Tools.S3' has been installed."
-                Import-Module -Name AWS.Tools.S3;
-                log -msg "[✔] PowerShell Module 'AWS.Tools.S3' has been imported into this session."
-            }
-            else {
-                log -msg "[✔] PowerShell Module 'AWS.Tools.S3' availability has been confirmed."
-            }
-
+            ######################
+            ## IIS health-checks: 
+            ######################
             # Check that IIS is installed/enabled
             if ($(Get-WindowsFeature Web-Server).InstallState -ne "Installed") {
                 log "Warn" "Windows Feature 'Web-Server' needs to be enabled for the healthchecks to work. Configuring now."
                 Install-WindowsFeature Web-Server -IncludeManagementTools;
             }
-            log -msg "[✔] IIS has been enabled."
+            log -msg "[✓] IIS has been enabled."
 
             # Make sure there is a basic index.html available to answer requests
             if (-not (Get-Item -Path $LocalHelloWorldFile)) {
                 Write-Output "<h1>Hello World</h1>" | Out-File -FilePath $LocalHelloWorldFile;
-                log -msg "[✔] 'Hello World' index.html dumped to local wwwroot folder: '$LocalHelloWorldFile'."
+                log -msg "[✓] 'Hello World' index.html dumped to local wwwroot folder: '$LocalHelloWorldFile'."
             }
             $response = (Invoke-WebRequest "http://localhost" -UseBasicParsing);
-            log -msg "[✔] Basic request to 'http://localhost' returned the following: '$($response.StatusCode) $($response.StatusDescription)'"
+            log -msg "[✓] Basic request to 'http://localhost' returned the following: '$($response.StatusCode) $($response.StatusDescription)'"
 
-            # Double-check that we have the AWS functions available:
+            #############################################
+            ## AWS S3 downloading extended config files: 
+            #############################################
+            # Check that the AWS.Tools.S3 module is available:
+            if ($null -eq $(Get-Command "Get-S3Object")) {
+                log "Warn" "PowerShell Module 'AWS.Tools.S3' needs to be installed & available for this script to function. Installing now."
+                Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force;
+                log -msg "[✓] NuGet package provider has been installed."
+                Install-Module -Name AWS.Tools.S3 -Force -AllowClobber;
+                log -msg "[✓] PowerShell Module 'AWS.Tools.S3' has been installed."
+                Import-Module -Name AWS.Tools.S3;
+                log -msg "[✓] PowerShell Module 'AWS.Tools.S3' has been imported into this session."
+            }
+            else {
+                log -msg "[✓] PowerShell Module 'AWS.Tools.S3' availability has been confirmed."
+            }
             log -msg "AWSPowerShellVersion Info:`n$(Get-AWSPowerShellVersion -ListServiceVersionInfo)"
-            
+
             # Download the contents of the configuration bucket
             if (Get-S3Object -BucketName $S3BucketName) {
                 Read-S3Object -BucketName $S3BucketName -KeyPrefix $S3BucketFolder -Folder $LocalScriptFolder
-                log -msg "[✔] The contents of the '$S3BucketFolder' folder in the '$S3BucketName' S3Bucket have been downloaded to '$LocalScriptFolder'."
+                log -msg "[✓] The contents of the '$S3BucketFolder' folder in the '$S3BucketName' S3Bucket have been downloaded to '$LocalScriptFolder'."
             }
             else {
-                log "Error" "[❌] S3 Bucket at '$S3BucketName' is not accessible."
+                log "Error" "[X] S3Bucket at '$S3BucketName' is not accessible."
             }
 
+            #############################################
+            ## Execute extended SOE configuration files: 
+            #############################################
             # Load Environment Variables if they are defined/available
             $EnvVarsFile = (Join-Path $LocalScriptFolder "_env.ps1")
             if (Test-Path $EnvVarsFile) { 
-                log -msg "[✔] File '$EnvVarsFile' exists. Loading environment variables from it."; 
+                log -msg "[✓] File '$EnvVarsFile' exists. Loading environment variables from it."; 
                 . $EnvVarsFile; 
-                log -msg "[✔] Environment variables were loaded from file: '$EnvVarsFile'."; 
+                log -msg "[✓] Environment variables were loaded from file: '$EnvVarsFile'."; 
             }
             else {
-                log "Error" "[❌] File '$EnvVarsFile' not found. Executing fallback."; 
+                log "Error" "[X] File '$EnvVarsFile' not found. Executing fallback."; 
 
                 # # Load known environment variables for downloaded scripts:
                 # $ENV:NessusKey = {{NESSUS_KEY}}
@@ -98,12 +108,13 @@
             # Run each script that was downloaded, excluding any prefixed with underscore
             foreach ($script in $(Get-ChildItem -Path $LocalScriptFolder -Exclude "_*")) {
                 log -msg "[?] Configuration script '$($script.FullName)' located. Executing now.";
-                # Start-Process -FilePath $script.FullName -Wait
-                log -msg "[✔] Execution of configuration script '$($script.FullName)' completed.";
+                Start-Process -FilePath $script.FullName -Wait
+                & $script
+                log -msg "[✓] Execution of configuration script '$($script.FullName)' completed.";
             }
         }
         catch {
-            log "Error" "[❌] An error occurred that could not be automatically resolved: $_"
+            log "Error" "[X] An error occurred that could not be automatically resolved: $_"
             throw $_;
         }
     }
