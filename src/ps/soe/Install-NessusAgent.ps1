@@ -98,6 +98,8 @@ function Install-NessusAgent {
             $arguments = $arguments.Replace($LoggingReplacement, $NessusKey)
 
             Start-Process "msiexec" -ArgumentList $arguments -Wait
+
+            Write-Output "[✓] All done. Nessus Agent is installed & configured."
         }
         catch {
             Write-Error "An error occurred that could not be automatically resolved:"

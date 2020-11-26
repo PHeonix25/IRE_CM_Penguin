@@ -128,13 +128,13 @@ function Set-OctopusDeployTentacleConfiguration {
             Write-Error "OctopusServer Thumbprint is not available. Script cannot continue."
             throw [System.ArgumentNullException] "OctopusServerThumbprint"
         }
-        if (-not $OctopusTentacleInstanceName) {
-            Write-Warning "OctopusTentacleInstanceName variable not provided, defaulting to ComputerName"
-            $OctopusTentacleInstanceName = $ENV:ComputerName ?? [Environment]::MachineName ?? [System.Net.Dns]::GetHostName()
-        }
         if (-not $OctopusTentacleRoles) {
             Write-Error "No roles are assigned to this instance, cannot continue until roles are provided."
             throw [System.ArgumentNullException] "OctopusTentacleRoles";
+        }
+        if (-not $OctopusTentacleInstanceName) {
+            $OctopusTentacleInstanceName = "$OctopusTentacleEnvironment--$ENV:ComputerName"
+            Write-Warning "OctopusTentacleInstanceName variable not provided, defaulting to Environment-ComputerName ('$OctopusTentacleInstanceName')"
         }
 
         # Assign global variables
@@ -224,7 +224,7 @@ function Set-OctopusDeployTentacleConfiguration {
             Write-Verbose "Executing: '$InstalledTentacleExe $arguments'"
             Start-Process $InstalledTentacleExe -ArgumentList $arguments -Wait
 
-            Write-Host -ForegroundColor Green "[✔] All done. OctopusDeploy Tentacle is installed & configured."
+            Write-Output "[✓] All done. OctopusDeploy Tentacle is installed & configured."
         }
         catch {
             Write-Error "An error occurred that could not be automatically resolved:"
