@@ -1,6 +1,11 @@
 AWSTemplateFormatVersion: 2010-09-09
-Parameters:
+Metadata:
+  Project: CoverMore EMEA Migration to AMS
+  Author: Brandon Pierce <brandon.pierce@slalom.com>
+  Version: 0.2.1
+  Date-Created: 2020-11-30 23:36
 
+Parameters:
   PenguinEnvironment:
     Type: String
     Description: The specified environment for this deployment
@@ -22,30 +27,36 @@ Parameters:
     Type: String
     Description: "The ARN of the IAM Instance Profile to be assigned to this instance"
 
-  PenguinDatabaseEc2Type:
-    Type: String
-    Description: "The EC2 Instance Type"
-    Default: 't3.medium'
-
   PenguinKmsCmkArn:
     Description: "The KMS CMK ARN of the key created for this Penguin application environment."
     Type: String
   
-  PenguinDatabaseAmiId:
+  PenguinDbAmiId:
     Type: String
     Description: "The AMI of the AMS SOE image."
+
+  PenguinPrivateHostedZone:
+    Description: "The Route 53 private hosted zone ID of the application account hosted zone."
+    Type: String
 
   PenguinDatabaseSubnetIdAz1:
     Type: String
     Description: "The Subnet ID of Database Subnet A"
+
   PenguinDatabaseSubnetIdAz2:
     Type: String
     Description: "The Subnet ID of Database Subnet B"
 
+  SharedServicesCidr:
+    Type: String
+    Description: "The VPC CIDR for MALZ Shared Services account"
+    AllowedPattern: '^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/([0-9]|[1-2][0-9]|3[0-2]))$'
+    Default: 10.109.2.0/23
+
 Mappings:
   PenguinEnvironmentSettings:
     ire-cm-penguin-dev:
-      EnvShortName: dev1
+      EnvShortName: dev
       VpcCidr: 10.110.32.0/21
       PublicSubnet1Az1: 10.110.32.0/25
       PublicSubnet1Az2: 10.110.32.128/25
@@ -53,9 +64,8 @@ Mappings:
       ApplicationSubnetAz2: 10.110.33.128/25
       DatabaseSubnetAz1: 10.110.34.0/25
       DatabaseSubnetAz2: 10.110.34.128/25
-      PenguinEc2InstanceSize: t3.medium
-      ScalingGroupMin: 1
-      ScalingGroupMax: 1
+      PenguinEc2InstanceSize: t3.xlarge
+      DatabaseVolumeSize: 100
       LogRetentionInDays: 7
 
     ire-cm-penguin-test2:
@@ -67,9 +77,8 @@ Mappings:
       ApplicationSubnetAz2: 10.110.41.128/25
       DatabaseSubnetAz1: 10.110.42.0/25
       DatabaseSubnetAz2: 10.110.42.128/25
-      PenguinEc2InstanceSize: t3.medium
-      ScalingGroupMin: 1
-      ScalingGroupMax: 1
+      PenguinEc2InstanceSize: t3.xlarge
+      DatabaseVolumeSize: 100
       LogRetentionInDays: 7
       
     ire-cm-penguin-test3:
@@ -81,9 +90,8 @@ Mappings:
       ApplicationSubnetAz2: 10.110.49.128/25
       DatabaseSubnetAz1: 10.110.50.0/25
       DatabaseSubnetAz2: 10.110.50.128/25
-      PenguinEc2InstanceSize: t3.medium
-      ScalingGroupMin: 1
-      ScalingGroupMax: 1
+      PenguinEc2InstanceSize: t3.xlarge
+      DatabaseVolumeSize: 100
       LogRetentionInDays: 7
 
     ire-cm-penguin-staging:
@@ -95,9 +103,8 @@ Mappings:
       ApplicationSubnetAz2: 10.110.57.128/25
       DatabaseSubnetAz1: 10.110.58.0/25
       DatabaseSubnetAz2: 10.110.58.128/25
-      PenguinEc2InstanceSize: t3.medium
-      ScalingGroupMin: 1
-      ScalingGroupMax: 1
+      PenguinEc2InstanceSize: t3.xlarge
+      DatabaseVolumeSize: 100
       LogRetentionInDays: 7
 
     ire-cm-penguin-training:
@@ -109,9 +116,8 @@ Mappings:
       ApplicationSubnetAz2: 10.110.17.128/25
       DatabaseSubnetAz1: 10.110.18.0/25
       DatabaseSubnetAz2: 10.110.18.128/25
-      PenguinEc2InstanceSize: t3.medium
-      ScalingGroupMin: 1
-      ScalingGroupMax: 1
+      PenguinEc2InstanceSize: t3.xlarge
+      DatabaseVolumeSize: 100
       LogRetentionInDays: 7
 
     ire-cm-penguin-preprod:
@@ -124,8 +130,7 @@ Mappings:
       DatabaseSubnetAz1: 10.110.10.0/25
       DatabaseSubnetAz2: 10.110.10.128/25
       PenguinEc2InstanceSize: m5.large
-      ScalingGroupMin: 2
-      ScalingGroupMax: 2
+      DatabaseVolumeSize: 100
       LogRetentionInDays: 7
 
     ire-cm-penguin-prod:
@@ -138,30 +143,166 @@ Mappings:
       DatabaseSubnetAz1: 10.110.2.0/25
       DatabaseSubnetAz2: 10.110.2.128/25
       PenguinEc2InstanceSize: m5.large
-      ScalingGroupMin: 3
-      ScalingGroupMax: 5
+      DatabaseVolumeSize: 150
       LogRetentionInDays: 7
 
-Resources:
-  PenguinDatabasePlacementGroup:
-    Type: AWS::EC2::PlacementGroup
-    Properties: 
-      Strategy: spread
+Conditions:
+  ProvisionForProd: !Equals [!FindInMap [PenguinEnvironmentSettings, !Ref PenguinEnvironment, EnvShortName], prod]
 
-  PenguinDatabasePrimary:
-    Type: AWS::EC2::Instance
+Resources:
+  PenguinDatabaseSecGroup:
+    Type: 'AWS::EC2::SecurityGroup'
     Properties:
-      ImageId: !Ref PenguinDatabaseAmiId
-      BlockDeviceMappings:
+      GroupDescription: Access rules and definitions for the Penguin Databases
+      GroupName: !Join ["-", ["IRE-CM-Penguin", !FindInMap [PenguinEnvironmentSettings, !Ref PenguinEnvironment, EnvShortName], "Database-Security-Group"]]
+      VpcId: !Ref PenguinVpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          Description: Allow on-prem systems to access environment database servers
+          FromPort: 1433
+          ToPort: 1433
+          CidrIp: 10.2.0.0/24
+        - IpProtocol: tcp
+          Description: Allow connections from Application Subnet1
+          FromPort: 1433
+          ToPort: 1433
+          CidrIp: !FindInMap [PenguinEnvironmentSettings, !Ref PenguinEnvironment, ApplicationSubnetAz1]
+        - IpProtocol: tcp
+          Description: Allow connections from Application Subnet2
+          FromPort: 1433
+          ToPort: 1433
+          CidrIp: !FindInMap [PenguinEnvironmentSettings, !Ref PenguinEnvironment, ApplicationSubnetAz2]
+        - IpProtocol: tcp
+          Description: "Comms from Octopus code deployment"
+          FromPort: 10933
+          ToPort: 10933
+          CidrIp: 10.200.20.120/32
+        - IpProtocol: tcp
+          Description: "Comms from Octopus code deployment"
+          FromPort: 10943
+          ToPort: 10943
+          CidrIp: 10.200.20.120/32
+        - IpProtocol: tcp
+          Description: "Comms from Octopus code deployment -- likely redundant to be investigated"
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 10.200.20.120/32
+        - IpProtocol: tcp
+          Description: "Comms from Octopus code deployment -- likely redundant to be investigated"
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 10.200.20.120/32
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          Description: Allow connections from Application Subnet2
+          FromPort: 1433
+          ToPort: 1433
+          CidrIp: 10.2.0.0/24
+        - IpProtocol: tcp
+          Description: Allow DB servers to communicate with the internet
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          Description: Allow DB servers to communicate with the internet
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          Description: "Comms to Octopus code deployment"
+          FromPort: 10943
+          ToPort: 10943
+          CidrIp: 10.200.20.120/32
+        - IpProtocol: "-1"
+          FromPort: -1
+          ToPort: -1
+          Description: "Allow all Comms to Shared Services"
+          CidrIp: !Ref SharedServicesCidr
+      Tags:
+        - Key: Name
+          Value: !Join ["-", ["IRE-CM-Penguin", !FindInMap [PenguinEnvironmentSettings, !Ref PenguinEnvironment, EnvShortName], "Database-Security-Group"]]
+
+  PenguinDatabaseLaunchTemplate:
+    Type: 'AWS::EC2::LaunchTemplate'
+    Properties:
+      LaunchTemplateData:
+        CreditSpecification:
+          CpuCredits: unlimited
+        ImageId: !Ref PenguinDbAmiId
+        InstanceType: !FindInMap [PenguinEnvironmentSettings, !Ref PenguinEnvironment, PenguinEc2InstanceSize]
+        IamInstanceProfile:
+          Arn: !Ref PenguinDatabaseIamInstanceProfile
+        BlockDeviceMappings:
           - DeviceName: /dev/sda1
             Ebs:
-              VolumeSize: 100
+              VolumeSize: !FindInMap [PenguinEnvironmentSettings, !Ref PenguinEnvironment, DatabaseVolumeSize]
               VolumeType: gp2
               DeleteOnTermination: true
               Encrypted: true
               KmsKeyId: !Ref PenguinKmsCmkArn
-      PlacementGroupName: !Ref PenguinDatabasePlacementGroup
-      InstanceType: !Ref PenguinDatabaseEc2Type
-      CreditSpecification: 
-        CPUCredits: unlimited
-      
+        TagSpecifications:
+          - ResourceType: instance
+            Tags:
+              - Key: Name
+                Value: !Join ["-", ["IRE-CM-Penguin", !FindInMap [PenguinEnvironmentSettings, !Ref PenguinEnvironment, EnvShortName], "Database-Server"]]
+
+  PenguinDatabasePrimary:
+    Type: AWS::EC2::Instance
+    Properties:
+      LaunchTemplate:
+        LaunchTemplateId: !Ref PenguinDatabaseLaunchTemplate
+        Version: !GetAtt [PenguinDatabaseLaunchTemplate, LatestVersionNumber]
+      SecurityGroupIds: 
+      - !Ref PenguinDatabaseSecGroup
+      SubnetId: !Ref PenguinDatabaseSubnetIdAz1
+
+  PenguinDatabaseSecondaryA:
+    Type: AWS::EC2::Instance
+    Condition: ProvisionForProd
+    Properties:
+      LaunchTemplate:
+        LaunchTemplateId: !Ref PenguinDatabaseLaunchTemplate
+        Version: !GetAtt [PenguinDatabaseLaunchTemplate, LatestVersionNumber]
+      SecurityGroupIds: 
+      - !Ref PenguinDatabaseSecGroup
+      SubnetId: !Ref PenguinDatabaseSubnetIdAz2
+
+  PenguinDatabaseSecondaryB:
+    Type: AWS::EC2::Instance
+    Condition: ProvisionForProd
+    Properties:
+      LaunchTemplate:
+        LaunchTemplateId: !Ref PenguinDatabaseLaunchTemplate
+        Version: !GetAtt [PenguinDatabaseLaunchTemplate, LatestVersionNumber]
+      SecurityGroupIds: 
+      - !Ref PenguinDatabaseSecGroup
+      SubnetId: !Ref PenguinDatabaseSubnetIdAz1
+  
+  PenguinDatabasePrimaryRoute53Record:
+    Type: 'AWS::Route53::RecordSet'
+    Properties:
+      Name: !Join [".", ["dbprimary", !FindInMap [PenguinEnvironmentSettings, !Ref PenguinEnvironment, EnvShortName], "penguin.aws-pri.covermore.co.uk"]]
+      Type: A
+      ResourceRecords:
+      - !GetAtt PenguinDatabasePrimary.PrivateIp
+      HostedZoneId: !Ref PenguinPrivateHostedZone
+
+  PenguinDatabaseSecondaryARoute53Record:
+    Type: 'AWS::Route53::RecordSet'
+    Condition: ProvisionForProd
+    Properties:
+      Name: !Join [".", ["dbsecondarya", !FindInMap [PenguinEnvironmentSettings, !Ref PenguinEnvironment, EnvShortName], "penguin.aws-pri.covermore.co.uk"]]
+      Type: A
+      ResourceRecords:
+      - !GetAtt PenguinDatabaseSecondaryA.PrivateIp
+      HostedZoneId: !Ref PenguinPrivateHostedZone
+
+  PenguinDatabaseSecondaryBRoute53Record:
+    Type: 'AWS::Route53::RecordSet'
+    Condition: ProvisionForProd
+    Properties:
+      Name: !Join [".", ["dbsecondaryb", !FindInMap [PenguinEnvironmentSettings, !Ref PenguinEnvironment, EnvShortName], "penguin.aws-pri.covermore.co.uk"]]
+      Type: A
+      ResourceRecords:
+      - !GetAtt PenguinDatabaseSecondaryB.PrivateIp
+      HostedZoneId: !Ref PenguinPrivateHostedZone
