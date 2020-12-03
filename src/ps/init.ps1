@@ -18,7 +18,7 @@
                 New-EventLog -LogName Application -Source $EventLogSource;
             }
             catch {
-                Write-Error "Event log source could not be created. Please try again as an Administrator."
+                Write-Error "[X] Event log source could not be created. Please try again as an Administrator."
                 return;
             }
         }
@@ -81,7 +81,7 @@
                 log -msg "The contents of the '$S3BucketFolder' folder in the '$S3BucketName' S3Bucket have been downloaded to '$LocalScriptFolder'."
             }
             else {
-                log "Error" "[X] S3Bucket at '$S3BucketName' is not accessible."
+                log "Error" "[X] S3Bucket at '$S3BucketName' is not accessible. Please ensure that permissions are set correctly."
             }
 
             #############################################
@@ -95,26 +95,12 @@
                 log -msg "Environment variables were loaded from file: '$EnvVarsFile'."; 
             }
             else {
-                log "Error" "[X] File '$EnvVarsFile' not found. Executing fallback."; 
-
-                # Load known environment variables for downloaded scripts:
-                $ENV:NessusKey = {{NESSUS_KEY}}
-                $ENV:NessusGroups = "IRE-CM-LZ"
-                $ENV:NessusServer = "cloud.tenable.com"
-                $ENV:OctopusServerUrl = "https://octopus.covermore.com"
-                $ENV:OctopusServerApiKey = {{OCTOSERVER_APIKEY}}
-                $ENV:OctopusServerThumbprint = {{OCTOSERVER_THUMB}}
-                $ENV:OctopusTentacleInstanceName = $null # will default to instance name
-                $ENV:OctopusTentaclePort = 10933
-                $ENV:OctopusTentacleRootFolder = "C:\Octopus"
-                $ENV:OctopusTentacleRoles = "Content Server UK"
-                $ENV:OctopusTentacleEnvironment = "Dev1"
-                log "Warn" "Environment variables were loaded directly from the inline script.";
+                log "Error" "[X] File '$EnvVarsFile' not found. Script cannot continue! Please make sure that the `_env.ps1` file is available at the following path: 's3://$S3BucketName/$S3BucketFolder/_env.ps1'."; 
             }
             
             # Run each script that was downloaded, excluding any prefixed with underscore
             foreach ($script in $(Get-ChildItem -Path $LocalScriptFolder -Exclude "_*")) {
-                log -msg "[?] Configuration script '$($script.FullName)' located. Executing now.";
+                log -msg "Configuration script '$($script.FullName)' located. Executing now.";
                 Import-Module $script.FullName
                 & $script
                 log -msg "Execution of configuration script '$($script.FullName)' completed.";
