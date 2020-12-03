@@ -51,8 +51,15 @@ function Invoke-CustomerProvidedScripts {
 
     PROCESS {
         try {
-            
-            Set-Location $(Resolve-Path $ScriptLocation);
+
+            $scriptDirectory = $(Resolve-Path $ScriptLocation);
+
+            # Cover-More's deployment scripts uses handle.exe (???) 
+            # Let's add it to the PATH so that these deployments can find it.
+            $env:Path += ";$scriptDirectory"
+            Write-Output "Folder '$scriptDirectory' has been added to the PATH.";
+
+            Set-Location $scriptDirectory
             & $(Resolve-Path $EntryPoint)
 
         }
