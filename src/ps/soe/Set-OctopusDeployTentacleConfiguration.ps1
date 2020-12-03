@@ -101,7 +101,7 @@ function Set-OctopusDeployTentacleConfiguration {
         Write-Verbose "=> '$PSCommandPath' has started.";
     
         # Fall-back to ENV VARS, if available & matching parameter not passed in
-        if (Get-ChildItem -Path "ENV:Octo*") {
+        if (Get-ChildItem -Path "ENV:Octopus*") {
             if ((-not $OctopusServerApiKey) -and $ENV:OctopusServerApiKey) {
                 $OctopusServerApiKey = $ENV:OctopusServerApiKey
                 Write-Verbose "OctopusDeploy Server API KEY loaded from matching environment variable."
@@ -162,6 +162,8 @@ function Set-OctopusDeployTentacleConfiguration {
         $DownloadedTentacle = "Octopus.Tentacle.msi"
         $InstalledTentacleExe = "C:\Program Files\Octopus Deploy\Tentacle\Tentacle.exe"
         $LoggingReplacement = "***REMOVED***"
+        $S3BucketName = $ENV:PenguinInfraBucketName
+        $S3BucketFolder = "installers"
 
         # Download prerequisite packages
         if (Test-Path $InstalledTentacleExe) {
@@ -171,28 +173,15 @@ function Set-OctopusDeployTentacleConfiguration {
                 Write-Warning "Previously downloaded Tentacle installer located ('$(Resolve-Path $DownloadedTentacle)'); Skipping download!"
             } else {
                 # Get it from S3?
-                $S3BucketName = $ENV:PenguinInfraBucketName
                 if (-not $S3BucketName) {
                     throw "S3BucketName for OctopusDeploy Tentacle Installer was not specified. Please populate the 'PenguinInfraBucketName' environment variable!"
                 }
                 if (Get-S3Object -BucketName $S3BucketName) {
-                    $S3BucketFolder = "installers"
                     Read-S3Object -BucketName $S3BucketName -KeyPrefix $S3BucketFolder -File $DownloadedTentacle
                     log -msg "The contents of the '$S3BucketFolder' folder in the '$S3BucketName' S3Bucket have been downloaded to '$(Resolve-Path $DownloadedTentacle)'."
                 } else {
                     throw "S3Bucket '$S3BucketName' could not be read. Please check permissions if it exists!"
                 }
-            }
-
-            $DownloadedTentacleHash = (Get-FileHash -Algorithm MD5 -Path $DownloadedTentacle).Hash;
-            Write-Verbose "Located '$(Resolve-Path $DownloadedTentacle)' - HASH: $DownloadedTentacleHash";
-
-            if ($DownloadedTentacleHash -ne $PublishedTentacleHash) {
-                throw "Tentacle installer hash is different from expected!`n`n" +`
-                        "EXPECTED: $PublishedTentacleHash`n`n" +`
-                        "RECEIVED: $DownloadedTentacleHash`n`n";
-            } else {
-                Write-Verbose "'$(Resolve-Path $DownloadedTentacle)': MD5 Hash meets expectation."
             }
         }
 
