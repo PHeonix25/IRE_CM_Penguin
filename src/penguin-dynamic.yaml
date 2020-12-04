@@ -73,7 +73,7 @@ Parameters:
 Mappings:
   PenguinEnvironmentSettings:
     ire-cm-penguin-dev:
-      EnvShortName: dev1
+      EnvShortName: dev
       VpcCidr: 10.110.32.0/21
       PublicSubnet1Az1: 10.110.32.0/25
       PublicSubnet1Az2: 10.110.32.128/25
@@ -551,7 +551,7 @@ Resources:
   PenguinAlbRoute53Record:
     Type: 'AWS::Route53::RecordSet'
     Properties:
-      Name: !Join [".", ["api", !FindInMap [PenguinEnvironmentSettings, !Ref PenguinEnvironment, EnvShortName], "penguin.aws-ext.covermore.co.uk"]]
+      Name: !Join [".", ["api", !FindInMap [PenguinEnvironmentSettings, !Ref PenguinEnvironment, EnvShortName], "penguin.aws-pub.covermore.co.uk"]]
       AliasTarget:
         DNSName: !GetAtt [PenguinApiAlb, DNSName]
         HostedZoneId: !GetAtt [PenguinApiAlb, CanonicalHostedZoneID]
