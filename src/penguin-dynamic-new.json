@@ -89,7 +89,7 @@
                 "DatabaseSubnetAz2": "10.110.34.128/25",
                 "PenguinEc2InstanceSize": "t3.xlarge",
                 "ScalingGroupMin": 1,
-                "ScalingGroupMax": 1,
+                "ScalingGroupMax": 2,
                 "LogRetentionInDays": 7
             },
             "ire-cm-penguin-test2": {
@@ -103,7 +103,7 @@
                 "DatabaseSubnetAz2": "10.110.42.128/25",
                 "PenguinEc2InstanceSize": "t3.xlarge",
                 "ScalingGroupMin": 1,
-                "ScalingGroupMax": 1,
+                "ScalingGroupMax": 2,
                 "LogRetentionInDays": 7
             },
             "ire-cm-penguin-test3": {
@@ -117,7 +117,7 @@
                 "DatabaseSubnetAz2": "10.110.50.128/25",
                 "PenguinEc2InstanceSize": "t3.xlarge",
                 "ScalingGroupMin": 1,
-                "ScalingGroupMax": 1,
+                "ScalingGroupMax": 2,
                 "LogRetentionInDays": 7
             },
             "ire-cm-penguin-staging": {
@@ -131,7 +131,7 @@
                 "DatabaseSubnetAz2": "10.110.58.128/25",
                 "PenguinEc2InstanceSize": "t3.xlarge",
                 "ScalingGroupMin": 1,
-                "ScalingGroupMax": 1,
+                "ScalingGroupMax": 2,
                 "LogRetentionInDays": 7
             },
             "ire-cm-penguin-training": {
@@ -145,7 +145,7 @@
                 "DatabaseSubnetAz2": "10.110.18.128/25",
                 "PenguinEc2InstanceSize": "t3.xlarge",
                 "ScalingGroupMin": 1,
-                "ScalingGroupMax": 1,
+                "ScalingGroupMax": 2,
                 "LogRetentionInDays": 7
             },
             "ire-cm-penguin-preprod": {
@@ -159,7 +159,7 @@
                 "DatabaseSubnetAz2": "10.110.10.128/25",
                 "PenguinEc2InstanceSize": "m5.xlarge",
                 "ScalingGroupMin": 2,
-                "ScalingGroupMax": 2,
+                "ScalingGroupMax": 3,
                 "LogRetentionInDays": 7
             },
             "ire-cm-penguin-prod": {
