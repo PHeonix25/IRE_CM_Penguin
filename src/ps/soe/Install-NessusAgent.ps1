@@ -54,7 +54,7 @@ function Install-NessusAgent {
     [CmdletBinding()]
     param (
         [Alias("K")][string]$NessusKey,
-        [Alias("G")][string]$NessusGroups = "AU Servers",
+        [Alias("G")][string]$NessusGroups,
         [Alias("N")][string]$NessusInstanceName
     )
     
@@ -89,39 +89,40 @@ function Install-NessusAgent {
         }
 
         # Assign global variables
-        $DownloadedNessusAgent = "NessusAgent.msi"
+        $DownloadedNessusAgent = "NessusAgent-8.2.1-x64.msi"
         $InstalledNessusExe = "C:\Program Files\Tenable\Nessus Agent\nessuscli.exe"
         $LoggingReplacement = "***REMOVED***"
+        $S3Region =  "eu-west-1"
         $S3BucketName = $ENV:PenguinInfraBucketName
-        $S3BucketFolder = "installers"
-
-        # Download prerequisite packages
-        if (Test-Path $InstalledNessusExe) {
-            Write-Information "Nessus Agent executable is already installed! Skipping download."
-        } else {
-            if (Test-Path $DownloadedNessusAgent) {
-                Write-Warning "Previously downloaded Nessus Agent located ('$(Resolve-Path $DownloadedNessusAgent)'); Skipping download!"
-            } else {
-                # Fetch from S3?
-                if (-not $S3BucketName) {
-                    throw "S3BucketName for Nessus Installer was not specified. Please populate the 'PenguinInfraBucketName' environment variable!"
-                }
-                if (Get-S3Object -BucketName $S3BucketName) {
-                    Read-S3Object -BucketName $S3BucketName -KeyPrefix $S3BucketFolder -File $DownloadedInstaller
-                    log -msg "The contents of the '$S3BucketFolder' folder in the '$S3BucketName' S3Bucket have been downloaded to '$(Resolve-Path $DownloadedInstaller)'."
-                } else {
-                    throw "S3Bucket '$S3BucketName' could not be read. Please check permissions if it exists!"
-                }
-            }
-        }
+        $S3BucketObject = (Join-Path "soe\installers" $DownloadedNessusAgent)
+        
+        Write-Output "All EnvVar Keys: $(Get-ChildItem ENV: | ForEach-Object { Write-Output $_.Key })"
     }
 
     PROCESS {
         try {
+            # Download installer package
+            if (Test-Path $InstalledNessusExe) {
+                Write-Output "Nessus Agent executable is already installed! Skipping download."
+            } else {
+                if (Test-Path $DownloadedNessusAgent) {
+                    Write-Warning "Previously downloaded Nessus Agent located ('$(Resolve-Path $DownloadedNessusAgent)'); Skipping download!"
+                } else {
+                    # Fetch from S3?
+                    if (-not $S3BucketName) {
+                        throw "S3BucketName for Nessus Installer was not specified. Please populate the 'PenguinInfraBucketName' environment variable!"
+                    } elseif (Get-S3Object -Region $S3Region -BucketName $S3BucketName) {
+                        Read-S3Object -Region $S3Region -BucketName $S3BucketName -Key $S3BucketObject -File $DownloadedNessusAgent
+                        Write-Output "'$S3BucketObject' from the '$S3BucketName' S3Bucket has been downloaded to '$(Resolve-Path $DownloadedNessusAgent)'."
+                    } else {
+                        throw "S3Bucket '$S3BucketName' could not be read. Please check permissions if it exists!"
+                    }
+                }
+            }
 
             # Installation
             if (Test-Path $InstalledNessusExe) {
-                Write-Information "Nessus Agent executable is already installed! Skipping installation."
+                Write-Output "Nessus Agent executable is already installed! Skipping installation."
             } else {
                 $arguments = "/i $DownloadedNessusAgent /passive /norestart /qn /LAME "".\install_nessusagent.log"" NESSUS_GROUPS=""$NessusGroups"" NESSUS_KEY=""$LoggingReplacement"""
                 Write-Verbose "Executing: 'msiexec $arguments'"
@@ -139,7 +140,7 @@ function Install-NessusAgent {
 
         }
         catch {
-            Write-Error "An error occurred that could not be automatically resolved:"
+            Write-Error "An error occurred that could not be automatically resolved: $_"
             throw $_;
         }
     }

@@ -159,39 +159,38 @@ function Set-OctopusDeployTentacleConfiguration {
         }
 
         # Assign global variables
-        $DownloadedTentacle = "Octopus.Tentacle.msi"
+        $DownloadedTentacle = "Octopus.Tentacle.6.0.135-x64.msi"
         $InstalledTentacleExe = "C:\Program Files\Octopus Deploy\Tentacle\Tentacle.exe"
         $LoggingReplacement = "***REMOVED***"
+        $S3Region =  "eu-west-1"
         $S3BucketName = $ENV:PenguinInfraBucketName
-        $S3BucketFolder = "installers"
-
-        # Download prerequisite packages
-        if (Test-Path $InstalledTentacleExe) {
-            Write-Information "OctopusDeploy Tentacle is already installed! Skipping download."
-        } else {
-            if (Test-Path $DownloadedTentacle) {
-                Write-Warning "Previously downloaded Tentacle installer located ('$(Resolve-Path $DownloadedTentacle)'); Skipping download!"
-            } else {
-                # Get it from S3?
-                if (-not $S3BucketName) {
-                    throw "S3BucketName for OctopusDeploy Tentacle Installer was not specified. Please populate the 'PenguinInfraBucketName' environment variable!"
-                }
-                if (Get-S3Object -BucketName $S3BucketName) {
-                    Read-S3Object -BucketName $S3BucketName -KeyPrefix $S3BucketFolder -File $DownloadedTentacle
-                    log -msg "The contents of the '$S3BucketFolder' folder in the '$S3BucketName' S3Bucket have been downloaded to '$(Resolve-Path $DownloadedTentacle)'."
-                } else {
-                    throw "S3Bucket '$S3BucketName' could not be read. Please check permissions if it exists!"
-                }
-            }
-        }
-
+        $S3BucketObject = (Join-Path "soe\installers" $DownloadedTentacle)
     }
 
     PROCESS {
         try {
+            if (Test-Path $InstalledTentacleExe) {
+                Write-Output "OctopusDeploy Tentacle is already installed! Skipping download."
+            } else {
+                # Download installer packages
+                if (Test-Path $DownloadedTentacle) {
+                    Write-Warning "Previously downloaded Tentacle installer located ('$(Resolve-Path $DownloadedTentacle)'); Skipping download!"
+                } else {
+                    # Get it from S3?
+                    if (-not $S3BucketName) {
+                        throw "S3BucketName for OctopusDeploy Tentacle Installer was not specified. Please populate the 'PenguinInfraBucketName' environment variable!"
+                    }
+                    if (Get-S3Object -Region $S3Region -BucketName $S3BucketName) {
+                        Read-S3Object -Region $S3Region -BucketName $S3BucketName -Key $S3BucketObject -File $DownloadedTentacle
+                        Write-Output "'$S3BucketObject' from the '$S3BucketName' S3Bucket has been downloaded to '$(Resolve-Path $DownloadedTentacle)'."
+                    } else {
+                        throw "S3Bucket '$S3BucketName' could not be read. Please check permissions if it exists!"
+                    }
+                }
+            }
 
             if (Test-Path $InstalledTentacleExe) {
-                Write-Information "OctopusDeploy Tentacle already installed. Skipping installation."
+                Write-Output "OctopusDeploy Tentacle already installed. Skipping installation."
             } else {
                 # Install OctopusDeploy Tentacle
                 $arguments = "/i ""$(Resolve-Path $DownloadedTentacle)"" ALLUSERS=1 /passive /norestart /qn /L* "".\install_tentacle.log"""

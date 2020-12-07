@@ -40,37 +40,37 @@
 function Invoke-CustomerProvidedScripts {
     [CmdletBinding()]
     param (
-        [string]$ScriptLocation = ".\customer-provided",
+        [string]$ConfigLocation = "C:\Configuration\customer-provided",
         [string]$EntryPoint = "DeployWebsites.ps1"
     )
     
     BEGIN {
-        Write-Verbose "=> '$PSCommandPath' has started.";
-        Start-Transcript -Path "customer-provided.txt" -UseMinimalHeader
+        Write-Verbose "=> '$PSCommandPath' has started."
+        Write-Verbose "Parameter values: ConfigLocation='$ConfigLocation', EntryPoint='$EntryPoint'.";
+        Start-Transcript -Path $(Join-Path $ConfigLocation "customer-provided.txt")
     }
 
     PROCESS {
         try {
-
-            $scriptDirectory = $(Resolve-Path $ScriptLocation);
-
             # Cover-More's deployment scripts uses handle.exe (???) 
             # Let's add it to the PATH so that these deployments can find it.
-            $env:Path += ";$scriptDirectory"
-            Write-Output "Folder '$scriptDirectory' has been added to the PATH.";
+            $ENV:Path += ";$ConfigLocation"
+            Write-Output "Folder '$ConfigLocation' has been added to the PATH.";
 
-            Set-Location $scriptDirectory
-            & $(Resolve-Path $EntryPoint)
+            Set-Location $ConfigLocation
+            . $(Resolve-Path $EntryPoint)
 
         }
         catch {
-            Write-Error "An error occurred that could not be automatically resolved:"
+            Write-Error "An error occurred that could not be automatically resolved: $_"
             throw $_;
+        }
+        finally {
+            Stop-Transcript;
         }
     }
 
     END {
-        Stop-Transcript
         Write-Verbose "=> '$PSCommandPath' has completed successfully.";
     }
 };
