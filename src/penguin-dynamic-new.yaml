@@ -294,22 +294,22 @@ Resources:
               DeleteOnTermination: true
               Encrypted: true
               KmsKeyId: !Ref PenguinKmsCmkArn
-        UserData: !Base64 
-          'Fn::Sub': >
+        UserData: 
+          Fn::Base64: !Sub |
             <powershell>
             & {
               BEGIN {
+                  $S3BucketName = "${PenguinInfraBucketName}"
+                  $S3BucketFolder = "${PenguinInfraBucketFolder}"
+                  $LocalScriptFolder = "C:\Configuration"
+                  $LocalHelloWorldFile = "C:\inetpub\wwwroot\index.html"
+                  $EventLogSource = "Cover-More SOE Customisation";
+                  
                   Import-Module AWSPowerShell
                   Import-Module Microsoft.PowerShell.Management
                   
                   # WinServer AMI's don't always specify TLS1.2, & Powershell 5 still defaults to TLS1.0
-                  [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-                  
-                  $S3BucketName = ${PenguinInfraBucketName}
-                  $S3BucketFolder = ${PenguinInfraBucketFolder}
-                  $LocalScriptFolder = "C:\Configuration"
-                  $LocalHelloWorldFile = "C:\inetpub\wwwroot\index.html"
-                  $EventLogSource = "Cover-More SOE Customisation"
+                  [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12;
                   
                   if (-not ([System.Diagnostics.EventLog]::SourceExists($EventLogSource))) {
                       Write-Warning "Event log source not located, creating now."
@@ -329,8 +329,9 @@ Resources:
                   }
 
                   log -msg "$(if ($PSCommandPath) { "'$PSCommandPath'" } else { "Initialisation" }) has started."
+                  log -msg "Known variables: `n S3BucketName: '$S3BucketName' `n S3BucketFolder: '$S3BucketFolder' `n LocalScriptFolder: '$LocalScriptFolder' `n EventLogSource: '$EventLogSource'";
               }
-
+            
               PROCESS {
                   try {
                       # Check that IIS is installed/enabled
@@ -369,7 +370,9 @@ Resources:
                       log -msg "AWSPowerShellVersion Info:`n$(Get-AWSPowerShellVersion -ListServiceVersionInfo)"
 
                       # Download the contents of the configuration bucket
-                      if (Get-S3Object -BucketName $S3BucketName) {
+                      if (-not $S3BucketName) {
+                          log "Error" "[X] The S3Bucket name variable was not defined. Please check the variables you provided in your RFC!"
+                      } elseif (Get-S3Object -BucketName $S3BucketName) {
                           Read-S3Object -BucketName $S3BucketName -KeyPrefix $S3BucketFolder -Folder $LocalScriptFolder
                           log -msg "The contents of the '$S3BucketFolder' folder in the '$S3BucketName' S3Bucket have been downloaded to '$LocalScriptFolder'."
                       }
@@ -389,10 +392,12 @@ Resources:
                       }
                       
                       # Run each script that was downloaded, excluding any prefixed with underscore
-                      foreach ($script in $(Get-ChildItem -Path $LocalScriptFolder -Exclude "_*")) {
+                      $scripts = $(Get-ChildItem -Path (Join-Path $LocalScriptFolder '*') -File -Exclude "_*");
+                      log -msg "Found $($scripts.Length) scripts in the '$LocalScriptFolder' folder. Iterating & executing them now.";
+                      foreach ($script in $scripts) {
                           log -msg "Configuration script '$($script.FullName)' located. Executing now.";
                           Import-Module $script.FullName
-                          & $script
+                          . $script.BaseName -Verbose *>&1 | ForEach-Object { log -msg "$($script.BaseName): $_" };
                           log -msg "Execution of configuration script '$($script.FullName)' completed.";
                       }
                   }
