@@ -791,11 +791,11 @@ if ($deploymentStack -eq "AU"){
 }
 if ($deploymentStack -eq "UK"){
 	#No B2C for UK
-	Write-Output "No B2C for UK... skipping" -foregroundcolor "green"
+	Write-Output "No B2C required for UK... skipping"
 }
 if ($deploymentStack -eq "US"){
 	#No B2C for US
-	Write-Output "No B2C for US... skipping" -foregroundcolor "green"
+	Write-Output "No B2C required for US... skipping"
 }
 
 
