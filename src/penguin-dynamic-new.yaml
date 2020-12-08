@@ -218,7 +218,7 @@ Resources:
           ToPort: 80
           SourceSecurityGroupId: !GetAtt [PenguinPublicAlbSecGroup, GroupId]
         - IpProtocol: tcp
-          Description: "Comms from Octopus Deploy Tentacle (required for code deployment)"
+          Description: "Comms to OctopusDeploy Tentacle - required for code deployment"
           FromPort: 10943
           ToPort: 10943
           CidrIp: 10.200.20.120/32
@@ -239,6 +239,11 @@ Resources:
           FromPort: 80
           ToPort: 80
           CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          Description: "Comms to OctopusDeploy Server - required for code deployment"
+          FromPort: 10943
+          ToPort: 10943
+          CidrIp: 10.200.20.120/32
         - IpProtocol: tcp
           Description: "Comms to EMEA MS SQL servers"
           FromPort: 1433
@@ -299,6 +304,9 @@ Resources:
             <powershell>
             & {
               BEGIN {
+                  $LASTEXITCODE = 0
+                  $ErrorActionPreference = "Stop";
+
                   $S3BucketName = "${PenguinInfraBucketName}"
                   $S3BucketFolder = "${PenguinInfraBucketFolder}"
                   $LocalScriptFolder = "C:\Configuration"
@@ -329,7 +337,6 @@ Resources:
                   }
 
                   log -msg "$(if ($PSCommandPath) { "'$PSCommandPath'" } else { "Initialisation" }) has started."
-                  log -msg "Known variables: `n S3BucketName: '$S3BucketName' `n S3BucketFolder: '$S3BucketFolder' `n LocalScriptFolder: '$LocalScriptFolder' `n EventLogSource: '$EventLogSource'";
               }
             
               PROCESS {
@@ -347,7 +354,7 @@ Resources:
                       log -msg "IIS has been enabled."
 
                       # Make sure there is a basic index.html available to answer requests
-                      if (-not (Get-Item -Path $LocalHelloWorldFile)) {
+                      if (-not (Test-Path $LocalHelloWorldFile)) {
                           Write-Output "<h1>Hello World</h1>" | Out-File -FilePath $LocalHelloWorldFile;
                           log -msg "'Hello World' index.html dumped to local wwwroot folder: '$LocalHelloWorldFile'."
                       }
@@ -397,7 +404,7 @@ Resources:
                       foreach ($script in $scripts) {
                           log -msg "Configuration script '$($script.FullName)' located. Executing now.";
                           Import-Module $script.FullName
-                          . $script.BaseName -Verbose *>&1 | ForEach-Object { log -msg "$($script.BaseName): $_" };
+                          . $script.BaseName *>&1 | ForEach-Object { log -msg "$($script.BaseName): $_" };
                           log -msg "Execution of configuration script '$($script.FullName)' completed.";
                       }
                   }
@@ -449,7 +456,7 @@ Resources:
         - !Ref PenguinApiAlbTargetGroup
       Tags:
         - Key: Name
-          Value: PenguinApiApplicationServer
+          Value: !Join ["-", ["IRE-CM-Penguin", !FindInMap [PenguinEnvironmentSettings, !Ref PenguinEnvironment, EnvShortName], "App-Server"]]
           PropagateAtLaunch: true
         - Key: Backup
           Value: 'false'
