@@ -132,8 +132,9 @@ function Install-NessusAgent {
 
             # Configuration: 
             # 'agent link --cloud --key=$NessusKey --groups=$NessusGroups --name=$NessusInstanceName'
-            $arguments = "agent link --cloud --key=$NessusKey --groups=$NessusGroups --name=$NessusInstanceName'"
+            $arguments = "agent link --cloud --key=$LoggingReplacement --groups=$NessusGroups --name=$NessusInstanceName"
             Write-Verbose "Executing: '$InstalledNessusExe $arguments'"
+            $arguments = $arguments.Replace($LoggingReplacement, $NessusKey)
             Start-Process $InstalledNessusExe -ArgumentList $arguments -Wait
 
             Write-Output "All done. Nessus Agent is installed and configured."
