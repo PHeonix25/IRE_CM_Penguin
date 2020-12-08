@@ -90,7 +90,7 @@ function Set-OctopusDeployTentacleConfiguration {
         [Alias("apikey")][string]$OctopusServerApiKey,
         [Alias("server")][string]$OctopusServerUrl,
         [Alias("thumb")] [string]$OctopusServerThumbprint,
-        [Alias("env")]   [string]$OctopusTentacleEnvironment = "Dev",
+        [Alias("env")]   [string]$OctopusTentacleEnvironment,
         [Alias("name")]  [string]$OctopusTentacleInstanceName,
         [Alias("port")]  [int]   $OctopusTentaclePort = 10943,
         [Alias("roles")] [string]$OctopusTentacleRoles,
@@ -98,41 +98,41 @@ function Set-OctopusDeployTentacleConfiguration {
     )
 
     BEGIN {
-        Write-Verbose "=> '$PSCommandPath' has started.";
+        Write-Information "=> '$PSCommandPath' has started.";
     
         # Fall-back to ENV VARS, if available & matching parameter not passed in
         if (Get-ChildItem -Path "ENV:Octopus*") {
             if ((-not $OctopusServerApiKey) -and $ENV:OctopusServerApiKey) {
                 $OctopusServerApiKey = $ENV:OctopusServerApiKey
-                Write-Verbose "OctopusDeploy Server API KEY loaded from matching environment variable."
+                Write-Information "OctopusDeploy Server API KEY loaded from matching environment variable."
             }
             if ((-not $OctopusServerUrl) -and $ENV:OctopusServerUrl) {
                 $OctopusServerUrl = $ENV:OctopusServerUrl
-                Write-Verbose "OctopusDeploy Server URL loaded from matching environment variable."
+                Write-Information "OctopusDeploy Server URL loaded from matching environment variable."
             }
             if ((-not $OctopusServerThumbprint) -and $ENV:OctopusServerThumbprint) {
                 $OctopusServerThumbprint = $ENV:OctopusServerThumbprint
-                Write-Verbose "OctopusDeploy Server THUMBPRINT loaded from matching environment variable."
+                Write-Information "OctopusDeploy Server THUMBPRINT loaded from matching environment variable."
             }
             if ((-not $OctopusTentacleEnvironment) -and $ENV:OctopusTentacleEnvironment) {
                 $OctopusTentacleEnvironment = $ENV:OctopusTentacleEnvironment
-                Write-Verbose "OctopusDeploy Tentacle ENVIRONMENT loaded from matching environment variable."
+                Write-Information "OctopusDeploy Tentacle ENVIRONMENT loaded from matching environment variable."
             }
             if ((-not $OctopusTentacleInstanceName) -and $ENV:OctopusTentacleInstanceName) {
                 $OctopusTentacleInstanceName = $ENV:OctopusTentacleInstanceName
-                Write-Verbose "OctopusDeploy Tentacle INSTANCENAME loaded from matching environment variable."
+                Write-Information "OctopusDeploy Tentacle INSTANCENAME loaded from matching environment variable."
             }
             if ((-not $OctopusTentaclePort) -and $ENV:OctopusTentaclePort) {
                 $OctopusTentaclePort = $ENV:OctopusTentaclePort
-                Write-Verbose "OctopusDeploy Tentacle PORT loaded from matching environment variable."
+                Write-Information "OctopusDeploy Tentacle PORT loaded from matching environment variable."
             }
             if ((-not $OctopusTentacleRoles) -and $ENV:OctopusTentacleRoles) {
                 $OctopusTentacleRoles = $ENV:OctopusTentacleRoles
-                Write-Verbose "OctopusDeploy Tentacle ROLES loaded from matching environment variable."
+                Write-Information "OctopusDeploy Tentacle ROLES loaded from matching environment variable."
             }
             if ((-not $OctopusTentacleRootFolder) -and $ENV:OctopusTentacleRootFolder) {
                 $OctopusTentacleRootFolder = $ENV:OctopusTentacleRootFolder
-                Write-Verbose "OctopusDeploy Tentacle ROOTFOLDER loaded from matching environment variable."
+                Write-Information "OctopusDeploy Tentacle ROOTFOLDER loaded from matching environment variable."
             }
         }
 
@@ -172,7 +172,7 @@ function Set-OctopusDeployTentacleConfiguration {
             if (Test-Path $InstalledTentacleExe) {
                 Write-Output "OctopusDeploy Tentacle is already installed! Skipping download."
             } else {
-                # Download installer packages
+                # Download OctopusDeploy installer packages
                 if (Test-Path $DownloadedTentacle) {
                     Write-Warning "Previously downloaded Tentacle installer located ('$(Resolve-Path $DownloadedTentacle)'); Skipping download!"
                 } else {
@@ -194,82 +194,74 @@ function Set-OctopusDeployTentacleConfiguration {
             } else {
                 # Install OctopusDeploy Tentacle
                 $arguments = "/i ""$(Resolve-Path $DownloadedTentacle)"" ALLUSERS=1 /passive /norestart /qn /L* "".\install_tentacle.log"""
-                Write-Verbose "Executing: 'msiexec $arguments'"
+                Write-Information "Executing: 'msiexec $arguments'"
                 $process = Start-Process "msiexec" -ArgumentList $arguments -Wait -PassThru -Verb runas
                 if ($process.ExitCode -ne 0) { # MSIExec sucks at throwing on failure. We should check the status ourselves
                     throw "Tentacle installation process returned error code: $($process.ExitCode). Please check the logs."
                 }
             }
 
-            ###- SAMPLE SCRIPT -###
-            # "C:\Program Files\Octopus Deploy\Tentacle\Tentacle.exe" create-instance --instance "Tentacle" --config "C:\Octopus\Tentacle.config"
-            # "C:\Program Files\Octopus Deploy\Tentacle\Tentacle.exe" new-certificate --instance "Tentacle" --if-blank
-            # "C:\Program Files\Octopus Deploy\Tentacle\Tentacle.exe" configure --instance "Tentacle" --reset-trust
-            # "C:\Program Files\Octopus Deploy\Tentacle\Tentacle.exe" configure --instance "Tentacle" --app "C:\Octopus\Applications" --port "10933" --noListen "True"
-            # "C:\Program Files\Octopus Deploy\Tentacle\Tentacle.exe" polling-proxy --instance "Tentacle" --proxyEnable "False" --proxyUsername "" --proxyPassword "" --proxyHost "" --proxyPort ""
-            # "C:\Program Files\Octopus Deploy\Tentacle\Tentacle.exe" register-with --instance "Tentacle" --server "https://octopus.covermore.com" --name "CM-PENGUIN-IRE-DEV--i-069d59f4ab441fc25" --comms-style "TentacleActive" --server-comms-port "10943" --apiKey "API-IUJNQ7F0NMUKLQUHSKWXZCXWVO" --space "Default" --environment "Dev1" --role "Content Server UK" --role "Login Server UK" --role "Network Drive Server UK" --role "Payment Gateway UK" --role "Penguin Jobs Trooper UK" --role "Web Server External UK" --role "Web Server Internal UK" --role "WIBS Server UK" --role "Windows Patch Target UK" --role "UK Compatibility PARTIAL" --policy "Default Machine Policy"
-            # "C:\Program Files\Octopus Deploy\Tentacle\Tentacle.exe" service --instance "Tentacle" --install --stop --start
-            #######################
+            Write-Output "Configuring new instance/tentacle: '$OctopusTentacleInstanceName'."
 
             # create-instance (default configuration)
-            $arguments = "create-instance --instance ""$OctopusTentacleInstanceName"" --config ""$(Join-Path $OctopusTentacleRootFolder "Tentacle.config")"" --console"
-            Write-Verbose "Executing: '$InstalledTentacleExe $arguments'"
+            $arguments = "create-instance --instance=""$OctopusTentacleInstanceName"" --config=""$(Join-Path $OctopusTentacleRootFolder "Tentacle.config")"" --console"
+            Write-Information "Executing: '$InstalledTentacleExe $arguments'"
             Start-Process $InstalledTentacleExe -ArgumentList $arguments -Wait
 
             # new-certificate --if-blank
-            $arguments = "new-certificate --instance ""$OctopusTentacleInstanceName"" --if-blank --console"
-            Write-Verbose "Executing: '$InstalledTentacleExe $arguments'"
+            $arguments = "new-certificate --instance=""$OctopusTentacleInstanceName"" --if-blank --console"
+            Write-Information "Executing: '$InstalledTentacleExe $arguments'"
             Start-Process $InstalledTentacleExe -ArgumentList $arguments -Wait
 
             # configure --reset-trust
-            $arguments = "configure --instance ""$OctopusTentacleInstanceName"" --reset-trust --console"
-            Write-Verbose "Executing: '$InstalledTentacleExe $arguments'"
+            $arguments = "configure --instance=""$OctopusTentacleInstanceName"" --reset-trust --console"
+            Write-Information "Executing: '$InstalledTentacleExe $arguments'"
             Start-Process $InstalledTentacleExe -ArgumentList $arguments -Wait
 
             # configure --home && --app && --port && --noListen "True"
-            $arguments = "configure --instance ""$OctopusTentacleInstanceName"" --home ""$OctopusTentacleRootFolder"" --app ""$(Join-Path $OctopusTentacleRootFolder "Applications")"" --port ""$OctopusTentaclePort"" --noListen ""True"" --console"
-            Write-Verbose "Executing: '$InstalledTentacleExe $arguments'"
+            $arguments = "configure --instance=""$OctopusTentacleInstanceName"" --home=""$OctopusTentacleRootFolder"" --app=""$(Join-Path $OctopusTentacleRootFolder "Applications")"" --port=""$OctopusTentaclePort"" --noListen=""True"" --console"
+            Write-Information "Executing: '$InstalledTentacleExe $arguments'"
             Start-Process $InstalledTentacleExe -ArgumentList $arguments -Wait
 
             # configure --trust "YOUR_OCTOPUS_THUMBPRINT"
-            $arguments = "configure --instance ""$OctopusTentacleInstanceName"" --trust ""$LoggingReplacement"" --console"
-            Write-Verbose "Executing: '$InstalledTentacleExe $arguments'"
+            $arguments = "configure --instance=""$OctopusTentacleInstanceName"" --trust=""$LoggingReplacement"" --console"
+            Write-Information "Executing: '$InstalledTentacleExe $arguments'"
             $arguments = $arguments.Replace($LoggingReplacement, $OctopusServerThumbprint)
             Start-Process $InstalledTentacleExe -ArgumentList $arguments -Wait
 
             # polling-proxy --instance "Tentacle" --proxyEnable "False" --proxyUsername "" --proxyPassword "" --proxyHost "" --proxyPort ""
-            $arguments = "polling-proxy --instance ""$OctopusTentacleInstanceName"" --proxyEnable ""False"" --proxyUsername "" --proxyPassword "" --proxyHost "" --proxyPort "" --console"
-            Write-Verbose "Executing: '$InstalledTentacleExe $arguments'"
+            $arguments = "polling-proxy --instance=""$OctopusTentacleInstanceName"" --proxyEnable=""False"" --proxyUsername="""" --proxyPassword="""" --proxyHost="""" --proxyPort="""" --console"
+            Write-Information "Executing: '$InstalledTentacleExe $arguments'"
             Start-Process $InstalledTentacleExe -ArgumentList $arguments -Wait
 
             # Open firewall
             $arguments = "advfirewall firewall add rule ""name=Octopus Deploy Tentacle"" dir=in action=allow protocol=TCP localport=$OctopusTentaclePort"
-            Write-Verbose "Executing: '""netsh"" $arguments'"
+            Write-Information "Executing: '""netsh"" $arguments'"
             Start-Process """netsh""" -ArgumentList $arguments -Wait
 
             # register-with --server "https://YOUR_OCTOPUS" --apiKey="API-YOUR_API_KEY" --role "XXX" --environment "YYY" --comms-style TentacleActive --console
-            $arguments = "register-with --instance ""$OctopusTentacleInstanceName"" --server ""$OctopusServerUrl"" --apiKey ""$LoggingReplacement"" --environment ""$OctopusTentacleEnvironment"" --comms-style ""TentacleActive"" --console"
+            $arguments = "register-with --instance=""$OctopusTentacleInstanceName"" --server=""$OctopusServerUrl"" --apiKey=""$LoggingReplacement"" --name=""$OctopusTentacleInstanceName"" --environment=""$OctopusTentacleEnvironment"" --comms-style=""TentacleActive"" --console"
             foreach ($role in ($OctopusTentacleRoles -split ';')) { # Need to add each desired role:
-                $arguments += " --role ""$role"""    
+                $arguments += " --role=""$role"""    
             }
-            Write-Verbose "Executing: '$InstalledTentacleExe $arguments'"
+            Write-Information "Executing: '$InstalledTentacleExe $arguments'"
             $arguments = $arguments.Replace($LoggingReplacement, $OctopusServerApiKey)
             Start-Process $InstalledTentacleExe -ArgumentList $arguments -Wait
 
             # service --instance "Tentacle" --install --stop --start --console
-            $arguments = "service --instance ""$OctopusTentacleInstanceName"" --install --stop --start --console"
-            Write-Verbose "Executing: '$InstalledTentacleExe $arguments'"
+            $arguments = "service --instance=""$OctopusTentacleInstanceName"" --install --stop --start --console"
+            Write-Information "Executing: '$InstalledTentacleExe $arguments'"
             Start-Process $InstalledTentacleExe -ArgumentList $arguments -Wait
 
             Write-Output "All done! OctopusDeploy Tentacle is installed & configured."
         }
         catch {
-            Write-Error "An error occurred that could not be automatically resolved:"
+            Write-Error "An error occurred that could not be automatically resolved: $_"
             throw $_;
         }
     }
 
     END {
-        Write-Verbose "=> '$PSCommandPath' has completed successfully.";
+        Write-Information "=> '$PSCommandPath' has completed successfully.";
     }
 };
