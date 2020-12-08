@@ -92,6 +92,14 @@ function Update-OctopusDeployReleases {
                 $OctopusServerUrl = $ENV:OctopusServerUrl
                 Write-Verbose "OctopusDeploy Server URL loaded from matching environment variable."
             }
+            if ((-not $EnvironmentName) -and $ENV:OctopusTentacleEnvironment) {
+                $EnvironmentName = $ENV:OctopusTentacleEnvironment
+                Write-Verbose "OctopusDeploy Tentacle ENVIRONMENT loaded from matching environment variable."
+            }
+            if ((-not $ProjectName) -and $ENV:OctopusTentacleProjects) {
+                $ProjectName = $ENV:OctopusTentacleProjects
+                Write-Verbose "OctopusDeploy Project list loaded from matching environment variable."
+            }
         }
 
         # Validate/assign parameters
@@ -103,7 +111,15 @@ function Update-OctopusDeployReleases {
             Write-Error "OctopusServer URL is not available. Script cannot continue."
             throw [System.ArgumentNullException] "OctopusServerUrl"
         }
-
+        if (-not $EnvironmentName) {
+            Write-Error "OctopusDeploy Environment needs to be specified. Script cannot continue."
+            throw [System.ArgumentNullException] "EnvironmentName"
+        }
+        if (-not $ProjectName) {
+            Write-Error "OctopusDeploy Projects need to be specified. Script cannot continue."
+            throw [System.ArgumentNullException] "ProjectName"
+        }
+        
         $header = @{ "X-Octopus-ApiKey" = $OctopusServerApiKey }
     }
 
@@ -118,7 +134,7 @@ function Update-OctopusDeployReleases {
 
                 $environments = (Invoke-RestMethod "$OctopusServerUrl/api/$spaceId/environments?name=$([System.Web.HTTPUtility]::UrlEncode($EnvironmentName))&skip=0&take=1" -Headers $header)
                 $environmentId = $environments.Items[0].Id
-                Write-Output "The projectId for '$EnvironmentName' is '$environmentId'."
+                Write-Output "The environmentId for '$EnvironmentName' is '$environmentId'."
 
                 $deployment = (Invoke-RestMethod "$OctopusServerUrl/api/$spaceId/deployments?projects=$projectId&environments=$environmentId&skip=0&take=1" -Headers $header)
                 $releaseId = $deployment.Items[0].ReleaseId
@@ -151,8 +167,8 @@ function Update-OctopusDeployReleases {
                         $deploymentIsActive = $false
                     }
                     else{
-                        Write-Output "Deployment is still active...checking again in 5 seconds"
-                        Start-Sleep -Seconds 5
+                        Write-Output "Deployment is still active...checking again in 15 seconds"
+                        Start-Sleep -Seconds 15
                     }
                     if ($deploymentStatusState -eq "Failed") {
                         Write-Error "Redeployment of '$name' errored. Please check your OctopusDeploy Server logs for failure reason, fix that, and try again." 
@@ -164,7 +180,7 @@ function Update-OctopusDeployReleases {
 
         }
         catch {
-            Write-Error "An error occurred that could not be automatically resolved:"
+            Write-Error "An error occurred that could not be automatically resolved: $_"
             throw $_;
         }
     }
