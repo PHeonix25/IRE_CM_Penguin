@@ -93,24 +93,16 @@ function WebAppExists([string]$siteName, [string]$appName) {
 
 function ChildExists([string]$siteName, [string]$childName, [string]$childType) {
 	Write-Output "Checking '$siteName'..."
-	if ($childType -eq "") {
-		$children = Get-Childitem ("IIS:\Sites\" + $siteName)
+	if ($childType) {
+		$children = Get-Childitem ("IIS:\Sites\$siteName") | Where-Object { $_.Schema.Name -eq $childType }
 	} else {
-		$children = Get-Childitem ("IIS:\Sites\" + $siteName) | Where-Object { $_.Schema.Name -eq $childType }
+		$children = Get-Childitem ("IIS:\Sites\$siteName")
 	}
 	$childCount = 0
 	foreach ($child in $children) {
 		if ($child.Name -eq $childName) { $childCount++ }
 	}
 	!($childCount -eq 0)
-}
-
-function ChildExistsPipelined([string]$siteName, [string]$childName, [string]$childType) {
-	Write-Output "Checking '$siteName'..."
-	return [boolean](
-		Get-ChildItem ("IIS:\Sites\$siteName") 
-		| Where-Object { $_.Name -eq $childName -and (if ($childType) { $_.Schema.Name -eq $childType } else { $true }) }
-		); 
 }
 
 function CheckAndConvertToWebApp([string]$siteName, [string]$virtDirName, [string]$dirName, [string]$appPool) {
