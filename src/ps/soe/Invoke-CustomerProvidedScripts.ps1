@@ -47,15 +47,29 @@ function Invoke-CustomerProvidedScripts {
     BEGIN {
         Write-Verbose "=> '$PSCommandPath' has started."
         Write-Verbose "Parameter values: ConfigLocation='$ConfigLocation', EntryPoint='$EntryPoint'.";
+        
+        $ErrorActionPreference = "Continue"; # This pains me, but the client scripts are designed to use Errors as logic branches
+        
         Start-Transcript -Path $(Join-Path $ConfigLocation "customer-provided.txt")
     }
 
     PROCESS {
         try {
             # Cover-More's deployment scripts uses handle.exe (???) 
-            # Let's add it to the PATH so that these deployments can find it.
-            $ENV:Path += ";$ConfigLocation"
-            Write-Output "Folder '$ConfigLocation' has been added to the PATH.";
+            # Let's move it to the System folder so that these deployments can find it.
+            $execName = "handle.exe"
+            $handle = (Join-Path $ConfigLocation $execName)
+            $dest = [Environment]::GetFolderPath("System");
+
+            if (Test-Path $handle) {
+                Write-Verbose "$execName located at '$handle'. Moving to '$dest' now."
+                Copy-Item $handle $dest -Verbose
+                if (Test-Path (Join-Path $dest $execName)) {
+                    Write-Output "$execName has been moved to '$(Join-Path $dest $execName)'."
+                }
+            } else {
+                Write-Warning "$execName was not located at '$handle'. Please double-check the path and try again."
+            }
 
             Set-Location $ConfigLocation
             . $(Resolve-Path $EntryPoint)
@@ -72,5 +86,6 @@ function Invoke-CustomerProvidedScripts {
 
     END {
         Write-Verbose "=> '$PSCommandPath' has completed successfully.";
+        $ErrorActionPreference = "Stop";
     }
 };
