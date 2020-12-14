@@ -1003,6 +1003,47 @@
                     ]
                 }
             }
+        },
+        "PenguinAlbRoute53Record": {
+            "Type": "AWS::Route53::RecordSet",
+            "Properties": {
+                "Name": {
+                    "Fn::Join": [
+                        ".",
+                        [
+                            "api",
+                            {
+                                "Fn::FindInMap": [
+                                    "PenguinEnvironmentSettings",
+                                    {
+                                        "Ref": "PenguinEnvironment"
+                                    },
+                                    "EnvShortName"
+                                ]
+                            },
+                            "penguin.pub.aws.covermorecloud.com"
+                        ]
+                    ]
+                },
+                "AliasTarget": {
+                    "DNSName": {
+                        "Fn::GetAtt": [
+                            "PenguinApiAlb",
+                            "DNSName"
+                        ]
+                    },
+                    "HostedZoneId": {
+                        "Fn::GetAtt": [
+                            "PenguinApiAlb",
+                            "CanonicalHostedZoneID"
+                        ]
+                    }
+                },
+                "Type": "A",
+                "HostedZoneId": {
+                    "Ref": "PenguinHostedZoneId"
+                }
+            }
         }
     }
 }

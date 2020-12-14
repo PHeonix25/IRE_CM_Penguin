@@ -628,3 +628,13 @@ Resources:
     Properties:
       LogGroupName: !Sub 'customer-penguin-${PenguinEnvironment}-web_other-log'
       RetentionInDays: !FindInMap [PenguinEnvironmentSettings, !Ref PenguinEnvironment, LogRetentionInDays]
+
+  PenguinAlbRoute53Record:
+    Type: 'AWS::Route53::RecordSet'
+    Properties:
+      Name: !Join [".", ["api", !FindInMap [PenguinEnvironmentSettings, !Ref PenguinEnvironment, EnvShortName], "penguin.pub.aws.covermorecloud.com"]]
+      AliasTarget:
+        DNSName: !GetAtt [PenguinApiAlb, DNSName]
+        HostedZoneId: !GetAtt [PenguinApiAlb, CanonicalHostedZoneID]
+      Type: A
+      HostedZoneId: !Ref PenguinHostedZoneId
