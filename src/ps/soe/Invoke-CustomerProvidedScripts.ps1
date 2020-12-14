@@ -72,7 +72,7 @@ function Invoke-CustomerProvidedScripts {
             Write-Verbose "Found $($scripts.Length) 'Deploy' scripts in the '$ConfigLocation' folder. Iterating & executing them now.";
             foreach ($script in $scripts) {
                 Write-Verbose "Configuration script '$($script.FullName)' located. Executing now.";
-                . "$($script.BaseName)";
+                . "$script";
                 Write-Verbose "Execution of configuration script '$($script.FullName)' completed.";
             }
 
