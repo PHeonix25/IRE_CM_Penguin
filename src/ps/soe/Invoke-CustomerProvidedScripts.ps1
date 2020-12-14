@@ -24,9 +24,6 @@
 .PARAMETER ScriptLocation
  The folder that contains the customer-provided Powershell scripts
 
-.PARAMETER EntryPoint
- The initial Powershell script to call from within that folder
-
 .INPUTS
  None
 
@@ -40,13 +37,12 @@
 function Invoke-CustomerProvidedScripts {
     [CmdletBinding()]
     param (
-        [string]$ConfigLocation = "C:\Configuration\customer-provided",
-        [string]$EntryPoint = "DeployWebsites.ps1"
+        [string]$ConfigLocation = "C:\Configuration\customer-provided"
     )
     
     BEGIN {
         Write-Verbose "=> '$PSCommandPath' has started."
-        Write-Verbose "Parameter values: ConfigLocation='$ConfigLocation', EntryPoint='$EntryPoint'.";
+        Write-Verbose "Parameter values: ConfigLocation='$ConfigLocation'.";
         
         $ErrorActionPreference = "Continue"; # This pains me, but the client scripts are designed to use Errors as logic branches
         
@@ -71,8 +67,14 @@ function Invoke-CustomerProvidedScripts {
                 Write-Warning "$execName was not located at '$handle'. Please double-check the path and try again."
             }
 
-            Set-Location $ConfigLocation
-            . $(Resolve-Path $EntryPoint)
+            # Run each script that was downloaded, excluding any prefixed with underscore
+            $scripts = $(Get-ChildItem -Path (Join-Path $ConfigLocation 'Deploy*') -File -Exclude "_*");
+            Write-Verbose "Found $($scripts.Length) 'Deploy' scripts in the '$ConfigLocation' folder. Iterating & executing them now.";
+            foreach ($script in $scripts) {
+                Write-Verbose "Configuration script '$($script.FullName)' located. Executing now.";
+                . "$($script.BaseName)";
+                Write-Verbose "Execution of configuration script '$($script.FullName)' completed.";
+            }
 
         }
         catch {
