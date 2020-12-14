@@ -24,3 +24,4 @@ $ENV:OctopusTentaclePort = 10943
 $ENV:OctopusTentacleRootFolder = ""
 $ENV:OctopusTentacleRoles = ""
 $ENV:OctopusTentacleEnvironment = ""
+$ENV:OctopusTentacleProjects = ""
