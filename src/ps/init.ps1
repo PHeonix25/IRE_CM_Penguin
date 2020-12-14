@@ -1,7 +1,10 @@
 & {
     BEGIN {
-        $S3BucketName = ${PenguinInfraBucketName}
-        $S3BucketFolder = ${PenguinInfraBucketFolder}
+        $LASTEXITCODE = 0
+        $ErrorActionPreference = "Stop";
+  
+        $S3BucketName = "${PenguinInfraBucketName}"
+        $S3BucketFolder = "${PenguinInfraBucketFolder}"
         $LocalScriptFolder = "C:\Configuration"
         $LocalHelloWorldFile = "C:\inetpub\wwwroot\index.html"
         $EventLogSource = "Cover-More SOE Customisation";
@@ -22,22 +25,18 @@
                 return;
             }
         }
-
+  
         function log { 
             param([System.Diagnostics.EventLogEntryType]$type = "Information", [string]$msg)
             Write-EventLog -LogName "Application" -Source $EventLogSource -EntryType $type -EventID 1 -Message $msg 
             Write-Output "$type`t`t$msg"
         }
-
+  
         log -msg "$(if ($PSCommandPath) { "'$PSCommandPath'" } else { "Initialisation" }) has started."
-        log -msg "Known variables: `n S3BucketName: '$S3BucketName' `n S3BucketFolder: '$S3BucketFolder' `n LocalScriptFolder: '$LocalScriptFolder' `n EventLogSource: '$EventLogSource'";
     }
-
+  
     PROCESS {
         try {
-            ######################
-            ## IIS health-checks: 
-            ######################
             # Check that IIS is installed/enabled
             if ($(Get-WindowsFeature Web-Server).InstallState -ne "Installed") {
                 log "Warn" "Windows Feature 'Web-Server' needs to be enabled for the healthchecks to work. Configuring now."
@@ -49,18 +48,15 @@
                 log -msg "Windows Feature 'IIS-WebServer' has been enabled."
             }
             log -msg "IIS has been enabled."
-
+  
             # Make sure there is a basic index.html available to answer requests
-            if (-not (Get-Item -Path $LocalHelloWorldFile)) {
+            if (-not (Test-Path $LocalHelloWorldFile)) {
                 Write-Output "<h1>Hello World</h1>" | Out-File -FilePath $LocalHelloWorldFile;
                 log -msg "'Hello World' index.html dumped to local wwwroot folder: '$LocalHelloWorldFile'."
             }
             $response = (Invoke-WebRequest "http://localhost" -UseBasicParsing);
             log -msg "Basic request to 'http://localhost' returned the following: '$($response.StatusCode) $($response.StatusDescription)'"
-
-            #############################################
-            ## AWS S3 downloading extended config files: 
-            #############################################
+  
             # Check that the AWS.Tools.S3 module is available:
             if ($null -eq $(Get-Command "Get-S3Object")) {
                 log "Warn" "PowerShell Module 'AWS.Tools.S3' needs to be installed & available for this script to function. Installing now."
@@ -75,7 +71,7 @@
                 log -msg "PowerShell Module 'AWS.Tools.S3' availability has been confirmed."
             }
             log -msg "AWSPowerShellVersion Info:`n$(Get-AWSPowerShellVersion -ListServiceVersionInfo)"
-
+  
             # Download the contents of the configuration bucket
             if (-not $S3BucketName) {
                 log "Error" "[X] The S3Bucket name variable was not defined. Please check the variables you provided in your RFC!"
@@ -86,14 +82,11 @@
             else {
                 log "Error" "[X] S3Bucket at '$S3BucketName' is not accessible. Please ensure that permissions are set correctly."
             }
-
-            #############################################
-            ## Execute extended SOE configuration files: 
-            #############################################
+  
             # Load Environment Variables if they are defined/available
             $EnvVarsFile = (Join-Path $LocalScriptFolder "_env.ps1")
             if (Test-Path $EnvVarsFile) { 
-                log -msg "File '$EnvVarsFile' exists. Loading environment variables from it."; 
+                log -msg "File '$EnvVarsFile' exists. Loading environment variables from it..."; 
                 . $EnvVarsFile; 
                 log -msg "Environment variables were loaded from file: '$EnvVarsFile'."; 
             }
@@ -107,7 +100,7 @@
             foreach ($script in $scripts) {
                 log -msg "Configuration script '$($script.FullName)' located. Executing now.";
                 Import-Module $script.FullName
-                . $script.BaseName -Verbose -ErrorAction Stop *>&1 | ForEach-Object { log -msg "$($script.BaseName): $_" };
+                . $script.BaseName *>&1 | ForEach-Object { log -msg "$($script.BaseName): $_" };
                 log -msg "Execution of configuration script '$($script.FullName)' completed.";
             }
         }
@@ -116,8 +109,8 @@
             throw $_;
         }
     }
-
+  
     END {
         log -msg "$(if ($PSCommandPath) { "'$PSCommandPath'" } else { "Initialisation" }) has completed successfully."
     }
-};
+  };
