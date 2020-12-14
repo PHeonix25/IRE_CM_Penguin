@@ -83,7 +83,7 @@ Mappings:
       DatabaseSubnetAz2: 10.110.34.128/25
       PenguinEc2InstanceSize: t3.xlarge
       ScalingGroupMin: 1
-      ScalingGroupMax: 1
+      ScalingGroupMax: 2
       LogRetentionInDays: 7
 
     ire-cm-penguin-test2:
@@ -97,7 +97,7 @@ Mappings:
       DatabaseSubnetAz2: 10.110.42.128/25
       PenguinEc2InstanceSize: t3.xlarge
       ScalingGroupMin: 1
-      ScalingGroupMax: 1
+      ScalingGroupMax: 2
       LogRetentionInDays: 7
       
     ire-cm-penguin-test3:
@@ -111,7 +111,7 @@ Mappings:
       DatabaseSubnetAz2: 10.110.50.128/25
       PenguinEc2InstanceSize: t3.xlarge
       ScalingGroupMin: 1
-      ScalingGroupMax: 1
+      ScalingGroupMax: 2
       LogRetentionInDays: 7
 
     ire-cm-penguin-staging:
@@ -125,7 +125,7 @@ Mappings:
       DatabaseSubnetAz2: 10.110.58.128/25
       PenguinEc2InstanceSize: t3.xlarge
       ScalingGroupMin: 1
-      ScalingGroupMax: 1
+      ScalingGroupMax: 2
       LogRetentionInDays: 7
 
     ire-cm-penguin-training:
@@ -139,7 +139,7 @@ Mappings:
       DatabaseSubnetAz2: 10.110.18.128/25
       PenguinEc2InstanceSize: t3.xlarge
       ScalingGroupMin: 1
-      ScalingGroupMax: 1
+      ScalingGroupMax: 2
       LogRetentionInDays: 7
 
     ire-cm-penguin-preprod:
@@ -153,7 +153,7 @@ Mappings:
       DatabaseSubnetAz2: 10.110.10.128/25
       PenguinEc2InstanceSize: m5.xlarge
       ScalingGroupMin: 2
-      ScalingGroupMax: 2
+      ScalingGroupMax: 3
       LogRetentionInDays: 7
 
     ire-cm-penguin-prod:
@@ -175,7 +175,7 @@ Resources:
     Type: 'AWS::EC2::SecurityGroup'
     Properties:
       GroupDescription: Access rules and definitions for the Primary Penguin Public API ALB
-      GroupName: PenguinPublicAlbSecurityGroup
+      GroupName: !Join ["-", ["IRE-CM-Penguin", !FindInMap [PenguinEnvironmentSettings, !Ref PenguinEnvironment, EnvShortName], "ALB-Security-Group"]]
       VpcId: !Ref PenguinVpcId
       SecurityGroupIngress:
         - IpProtocol: tcp
@@ -204,7 +204,7 @@ Resources:
     Type: 'AWS::EC2::SecurityGroup'
     Properties:
       GroupDescription: Access rules and definitions for Penguin Application Servers
-      GroupName: PenguinApplicationSecurityGroup
+      GroupName: !Join ["-", ["IRE-CM-Penguin", !FindInMap [PenguinEnvironmentSettings, !Ref PenguinEnvironment, EnvShortName], "Application-Security-Group"]]
       VpcId: !Ref PenguinVpcId
       SecurityGroupIngress:
         - IpProtocol: tcp
@@ -218,7 +218,7 @@ Resources:
           ToPort: 80
           SourceSecurityGroupId: !GetAtt [PenguinPublicAlbSecGroup, GroupId]
         - IpProtocol: tcp
-          Description: "Comms from Octopus Deploy Tentacle (required for code deployment)"
+          Description: "Comms to OctopusDeploy Tentacle - required for code deployment"
           FromPort: 10943
           ToPort: 10943
           CidrIp: 10.200.20.120/32
@@ -227,7 +227,6 @@ Resources:
           ToPort: -1
           Description: "Comms to Shared Services"
           CidrIp: !Ref SharedServicesCidr
-
       SecurityGroupEgress:
         - IpProtocol: tcp
           Description: "Public 443 comms to internet"
@@ -239,6 +238,11 @@ Resources:
           FromPort: 80
           ToPort: 80
           CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          Description: "Comms to OctopusDeploy Server - required for code deployment"
+          FromPort: 10943
+          ToPort: 10943
+          CidrIp: 10.200.20.120/32
         - IpProtocol: tcp
           Description: "Comms to EMEA MS SQL servers"
           FromPort: 1433
@@ -254,6 +258,77 @@ Resources:
           ToPort: -1
           Description: "Allow all Comms to Shared Services"
           CidrIp: !Ref SharedServicesCidr
+
+  PenguinApplicationAdSecGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Penguin Active Directory security group
+      GroupName: !Join ["-", ["IRE-CM-Penguin", !FindInMap [PenguinEnvironmentSettings, !Ref PenguinEnvironment, EnvShortName], "AD-Security-Group"]]
+      VpcId: !Ref 'PenguinVpcId'
+      SecurityGroupEgress:
+        - IpProtocol: '-1'
+          Description: Allow all traffic to BHDC02
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 10.2.0.8/32
+        - IpProtocol: '-1'
+          Description: Allow all traffic to ULDC04
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 10.2.0.9/32
+        - IpProtocol: '-1'
+          Description: Allow all traffic to ULDC05
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 10.2.0.18/32
+        - IpProtocol: '-1'
+          Description: Allow all traffic to NZDC01
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 10.2.21.8/32
+        - IpProtocol: '-1'
+          Description: Allow all traffic to BRDC01
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 10.7.1.2/32
+        - IpProtocol: '-1'
+          Description: Allow all traffic to BRDC02
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 10.7.1.6/32
+        - IpProtocol: '-1'
+          Description: Allow all traffic to MYDC01
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 10.30.4.3/32
+        - IpProtocol: '-1'
+          Description: Allow all traffic to CNDC03
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 10.88.1.3/32
+        - IpProtocol: '-1'
+          Description: Allow all traffic to INDVKDC01
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 10.91.3.10/32
+        - IpProtocol: '-1'
+          Description: Allow all traffic to INDAHDC01
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 10.91.3.11/32
+        - IpProtocol: '-1'
+          Description: Allow all traffic to AZEUDC01
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 10.201.0.10/32
+        - IpProtocol: '-1'
+          Description: Allow all traffic to AZUSDC01
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 10.202.2.6/32
+      Tags:
+        - Key: Name
+          Value: !Join ["-", ["IRE-CM-Penguin", !FindInMap [PenguinEnvironmentSettings, !Ref PenguinEnvironment, EnvShortName], "AD-Security-Group"]]
 
   PenguinApiAlb:
     Type: 'AWS::ElasticLoadBalancingV2::LoadBalancer'
@@ -281,11 +356,12 @@ Resources:
             DeleteOnTermination: true
             Groups:
               - !Ref PenguinApplicationSecGroup
+              - !Ref PenguinApplicationAdSecGroup
         TagSpecifications:
           - ResourceType: instance
             Tags:
               - Key: Name
-                Value: IRE-CM-Penguin-API
+                Value:  !Join ["-", ["IRE-CM-Penguin", !FindInMap [PenguinEnvironmentSettings, !Ref PenguinEnvironment, EnvShortName], "API-LaunchTemplate"]]
         BlockDeviceMappings:
           - DeviceName: /dev/sda1
             Ebs:
@@ -294,22 +370,25 @@ Resources:
               DeleteOnTermination: true
               Encrypted: true
               KmsKeyId: !Ref PenguinKmsCmkArn
-        UserData: !Base64 
-          'Fn::Sub': >
+        UserData: 
+          Fn::Base64: !Sub |
             <powershell>
             & {
               BEGIN {
+                  $LASTEXITCODE = 0
+                  $ErrorActionPreference = "Stop";
+            
+                  $S3BucketName = "${PenguinInfraBucketName}"
+                  $S3BucketFolder = "${PenguinInfraBucketFolder}"
+                  $LocalScriptFolder = "C:\Configuration"
+                  $LocalHelloWorldFile = "C:\inetpub\wwwroot\index.html"
+                  $EventLogSource = "Cover-More SOE Customisation";
+                  
                   Import-Module AWSPowerShell
                   Import-Module Microsoft.PowerShell.Management
                   
                   # WinServer AMI's don't always specify TLS1.2, & Powershell 5 still defaults to TLS1.0
-                  [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-                  
-                  $S3BucketName = ${PenguinInfraBucketName}
-                  $S3BucketFolder = ${PenguinInfraBucketFolder}
-                  $LocalScriptFolder = "C:\Configuration"
-                  $LocalHelloWorldFile = "C:\inetpub\wwwroot\index.html"
-                  $EventLogSource = "Cover-More SOE Customisation"
+                  [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12;
                   
                   if (-not ([System.Diagnostics.EventLog]::SourceExists($EventLogSource))) {
                       Write-Warning "Event log source not located, creating now."
@@ -321,16 +400,16 @@ Resources:
                           return;
                       }
                   }
-
+            
                   function log { 
                       param([System.Diagnostics.EventLogEntryType]$type = "Information", [string]$msg)
                       Write-EventLog -LogName "Application" -Source $EventLogSource -EntryType $type -EventID 1 -Message $msg 
                       Write-Output "$type`t`t$msg"
                   }
-
+            
                   log -msg "$(if ($PSCommandPath) { "'$PSCommandPath'" } else { "Initialisation" }) has started."
               }
-
+            
               PROCESS {
                   try {
                       # Check that IIS is installed/enabled
@@ -344,15 +423,15 @@ Resources:
                           log -msg "Windows Feature 'IIS-WebServer' has been enabled."
                       }
                       log -msg "IIS has been enabled."
-
+            
                       # Make sure there is a basic index.html available to answer requests
-                      if (-not (Get-Item -Path $LocalHelloWorldFile)) {
+                      if (-not (Test-Path $LocalHelloWorldFile)) {
                           Write-Output "<h1>Hello World</h1>" | Out-File -FilePath $LocalHelloWorldFile;
                           log -msg "'Hello World' index.html dumped to local wwwroot folder: '$LocalHelloWorldFile'."
                       }
                       $response = (Invoke-WebRequest "http://localhost" -UseBasicParsing);
                       log -msg "Basic request to 'http://localhost' returned the following: '$($response.StatusCode) $($response.StatusDescription)'"
-
+            
                       # Check that the AWS.Tools.S3 module is available:
                       if ($null -eq $(Get-Command "Get-S3Object")) {
                           log "Warn" "PowerShell Module 'AWS.Tools.S3' needs to be installed & available for this script to function. Installing now."
@@ -367,16 +446,18 @@ Resources:
                           log -msg "PowerShell Module 'AWS.Tools.S3' availability has been confirmed."
                       }
                       log -msg "AWSPowerShellVersion Info:`n$(Get-AWSPowerShellVersion -ListServiceVersionInfo)"
-
+            
                       # Download the contents of the configuration bucket
-                      if (Get-S3Object -BucketName $S3BucketName) {
+                      if (-not $S3BucketName) {
+                          log "Error" "[X] The S3Bucket name variable was not defined. Please check the variables you provided in your RFC!"
+                      } elseif (Get-S3Object -BucketName $S3BucketName) {
                           Read-S3Object -BucketName $S3BucketName -KeyPrefix $S3BucketFolder -Folder $LocalScriptFolder
                           log -msg "The contents of the '$S3BucketFolder' folder in the '$S3BucketName' S3Bucket have been downloaded to '$LocalScriptFolder'."
                       }
                       else {
                           log "Error" "[X] S3Bucket at '$S3BucketName' is not accessible. Please ensure that permissions are set correctly."
                       }
-
+            
                       # Load Environment Variables if they are defined/available
                       $EnvVarsFile = (Join-Path $LocalScriptFolder "_env.ps1")
                       if (Test-Path $EnvVarsFile) { 
@@ -385,14 +466,16 @@ Resources:
                           log -msg "Environment variables were loaded from file: '$EnvVarsFile'."; 
                       }
                       else {
-                          log "Error" "[X] File '$EnvVarsFile' not found. Script cannot continue! Please make sure that the `_env.ps1` file is available at the following path: 's3://$S3BucketName/$S3BucketFolder/_env.ps1'."; 
+                          log "Error" "[X] File '$EnvVarsFile' not found. Please make sure that the `_env.ps1` file is available at the following path: 's3://$S3BucketName/$S3BucketFolder/_env.ps1'."; 
                       }
                       
                       # Run each script that was downloaded, excluding any prefixed with underscore
-                      foreach ($script in $(Get-ChildItem -Path $LocalScriptFolder -Exclude "_*")) {
+                      $scripts = $(Get-ChildItem -Path (Join-Path $LocalScriptFolder '*') -File -Exclude "_*");
+                      log -msg "Found $($scripts.Length) scripts in the '$LocalScriptFolder' folder. Iterating & executing them now.";
+                      foreach ($script in $scripts) {
                           log -msg "Configuration script '$($script.FullName)' located. Executing now.";
                           Import-Module $script.FullName
-                          & $script
+                          . $script.BaseName *>&1 | ForEach-Object { log -msg "$($script.BaseName): $_" };
                           log -msg "Execution of configuration script '$($script.FullName)' completed.";
                       }
                   }
@@ -401,13 +484,12 @@ Resources:
                       throw $_;
                   }
               }
-
+            
               END {
                   log -msg "$(if ($PSCommandPath) { "'$PSCommandPath'" } else { "Initialisation" }) has completed successfully."
               }
             };
             </powershell>
-            <persist>true</persist>
   
   PenguinApplicationScalingGroup:
     Type: 'AWS::AutoScaling::AutoScalingGroup'
@@ -445,7 +527,7 @@ Resources:
         - !Ref PenguinApiAlbTargetGroup
       Tags:
         - Key: Name
-          Value: PenguinApiApplicationServer
+          Value: !Join ["-", ["IRE-CM-Penguin", !FindInMap [PenguinEnvironmentSettings, !Ref PenguinEnvironment, EnvShortName], "App-Server"]]
           PropagateAtLaunch: true
         - Key: Backup
           Value: 'false'
@@ -467,7 +549,6 @@ Resources:
   PenguinApiAlbTargetGroup:
     Type: 'AWS::ElasticLoadBalancingV2::TargetGroup'
     Properties:
-      Name: Penguin-Api-Application-Servers
       HealthCheckIntervalSeconds: 30
       HealthCheckPath: /
       HealthCheckPort: '80'
@@ -485,7 +566,7 @@ Resources:
       VpcId: !Ref PenguinVpcId
       Tags:
         - Key: Name
-          Value: Penguin-Api-Application-Servers
+          Value: !Join ["-", ["IRE-CM-Penguin", !FindInMap [PenguinEnvironmentSettings, !Ref PenguinEnvironment, EnvShortName], "App-TargetGroup"]]
   
   ALBListener:
     Type: 'AWS::ElasticLoadBalancingV2::Listener'
@@ -547,13 +628,3 @@ Resources:
     Properties:
       LogGroupName: !Sub 'customer-penguin-${PenguinEnvironment}-web_other-log'
       RetentionInDays: !FindInMap [PenguinEnvironmentSettings, !Ref PenguinEnvironment, LogRetentionInDays]
-
-  PenguinAlbRoute53Record:
-    Type: 'AWS::Route53::RecordSet'
-    Properties:
-      Name: !Join [".", ["api", !FindInMap [PenguinEnvironmentSettings, !Ref PenguinEnvironment, EnvShortName], "penguin.aws-pub.covermore.co.uk"]]
-      AliasTarget:
-        DNSName: !GetAtt [PenguinApiAlb, DNSName]
-        HostedZoneId: !GetAtt [PenguinApiAlb, CanonicalHostedZoneID]
-      Type: A
-      HostedZoneId: !Ref PenguinHostedZoneId

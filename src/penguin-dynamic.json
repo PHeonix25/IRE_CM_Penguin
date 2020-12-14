@@ -1,0 +1,1008 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Parameters": {
+        "PenguinEnvironment": {
+            "Type": "String",
+            "Description": "The specified environment for this deployment",
+            "Default": "ire-cm-penguin-dev",
+            "AllowedValues": [
+                "ire-cm-penguin-dev",
+                "ire-cm-penguin-test2",
+                "ire-cm-penguin-test3",
+                "ire-cm-penguin-staging",
+                "ire-cm-penguin-training",
+                "ire-cm-penguin-preprod",
+                "ire-cm-penguin-prod"
+            ]
+        },
+        "PenguinVpcId": {
+            "Type": "String",
+            "Description": "The VPC ID of the environment the app is deploying into."
+        },
+        "PenguinApiIamInstanceProfile": {
+            "Type": "String",
+            "Description": "The ARN of the IAM Instance Profile to be assigned to this instance"
+        },
+        "PenguinApiAmiId": {
+            "Description": "The AMI of the AMS SOE image.",
+            "Type": "String"
+        },
+        "PenguinKmsCmkArn": {
+            "Description": "The KMS CMK ARN of the key created for this Penguin application environment.",
+            "Type": "String"
+        },
+        "PenguinAcmCertificateArn": {
+            "Description": "The ACM Certificate arn",
+            "Type": "String"
+        },
+        "PenguinHostedZoneId": {
+            "Description": "The Route 53 Hosted Zone ID of the application account hosted zone.",
+            "Type": "String"
+        },
+        "PenguinInfraBucketName": {
+            "Type": "String"
+        },
+        "PenguinInfraBucketFolder": {
+            "Type": "String",
+            "Default": "soe/"
+        },
+        "PenguinPublicSubnetId1Az1": {
+            "Type": "String",
+            "Description": "The Subnet ID of Public Subnet A"
+        },
+        "PenguinPublicSubnetId1Az2": {
+            "Type": "String",
+            "Description": "The Subnet ID of Public Subnet B"
+        },
+        "PenguinApplicationSubnetIdAz1": {
+            "Type": "String",
+            "Description": "The Subnet ID of Application Subnet A"
+        },
+        "PenguinApplicationSubnetIdAz2": {
+            "Type": "String",
+            "Description": "The Subnet ID of Application Subnet B"
+        },
+        "PenguinDatabaseSubnetIdAz1": {
+            "Type": "String",
+            "Description": "The Subnet ID of Database Subnet A"
+        },
+        "PenguinDatabaseSubnetIdAz2": {
+            "Type": "String",
+            "Description": "The Subnet ID of Database Subnet B"
+        },
+        "SharedServicesCidr": {
+            "Type": "String",
+            "Description": "The VPC CIDR for MALZ Shared Services account",
+            "Default": "10.109.2.0/23"
+        }
+    },
+    "Mappings": {
+        "PenguinEnvironmentSettings": {
+            "ire-cm-penguin-dev": {
+                "EnvShortName": "dev",
+                "VpcCidr": "10.110.32.0/21",
+                "PublicSubnet1Az1": "10.110.32.0/25",
+                "PublicSubnet1Az2": "10.110.32.128/25",
+                "ApplicationSubnetAz1": "10.110.33.0/25",
+                "ApplicationSubnetAz2": "10.110.33.128/25",
+                "DatabaseSubnetAz1": "10.110.34.0/25",
+                "DatabaseSubnetAz2": "10.110.34.128/25",
+                "PenguinEc2InstanceSize": "t3.xlarge",
+                "ScalingGroupMin": 1,
+                "ScalingGroupMax": 2,
+                "LogRetentionInDays": 7
+            },
+            "ire-cm-penguin-test2": {
+                "EnvShortName": "test2",
+                "VpcCidr": "10.110.40.0/21",
+                "PublicSubnet1Az1": "10.110.40.0/25",
+                "PublicSubnet1Az2": "10.110.40.128/25",
+                "ApplicationSubnetAz1": "10.110.41.0/25",
+                "ApplicationSubnetAz2": "10.110.41.128/25",
+                "DatabaseSubnetAz1": "10.110.42.0/25",
+                "DatabaseSubnetAz2": "10.110.42.128/25",
+                "PenguinEc2InstanceSize": "t3.xlarge",
+                "ScalingGroupMin": 1,
+                "ScalingGroupMax": 2,
+                "LogRetentionInDays": 7
+            },
+            "ire-cm-penguin-test3": {
+                "EnvShortName": "test3",
+                "VpcCidr": "10.110.48.0/21",
+                "PublicSubnet1Az1": "10.110.48.0/25",
+                "PublicSubnet1Az2": "10.110.48.128/25",
+                "ApplicationSubnetAz1": "10.110.49.0/25",
+                "ApplicationSubnetAz2": "10.110.49.128/25",
+                "DatabaseSubnetAz1": "10.110.50.0/25",
+                "DatabaseSubnetAz2": "10.110.50.128/25",
+                "PenguinEc2InstanceSize": "t3.xlarge",
+                "ScalingGroupMin": 1,
+                "ScalingGroupMax": 2,
+                "LogRetentionInDays": 7
+            },
+            "ire-cm-penguin-staging": {
+                "EnvShortName": "staging",
+                "VpcCidr": "10.110.56.0/21",
+                "PublicSubnet1Az1": "10.110.56.0/25",
+                "PublicSubnet1Az2": "10.110.56.128/25",
+                "ApplicationSubnetAz1": "10.110.57.0/25",
+                "ApplicationSubnetAz2": "10.110.57.128/25",
+                "DatabaseSubnetAz1": "10.110.58.0/25",
+                "DatabaseSubnetAz2": "10.110.58.128/25",
+                "PenguinEc2InstanceSize": "t3.xlarge",
+                "ScalingGroupMin": 1,
+                "ScalingGroupMax": 2,
+                "LogRetentionInDays": 7
+            },
+            "ire-cm-penguin-training": {
+                "EnvShortName": "training",
+                "VpcCidr": "10.110.16.0/21",
+                "PublicSubnet1Az1": "10.110.16.0/25",
+                "PublicSubnet1Az2": "10.110.16.128/25",
+                "ApplicationSubnetAz1": "10.110.17.0/25",
+                "ApplicationSubnetAz2": "10.110.17.128/25",
+                "DatabaseSubnetAz1": "10.110.18.0/25",
+                "DatabaseSubnetAz2": "10.110.18.128/25",
+                "PenguinEc2InstanceSize": "t3.xlarge",
+                "ScalingGroupMin": 1,
+                "ScalingGroupMax": 2,
+                "LogRetentionInDays": 7
+            },
+            "ire-cm-penguin-preprod": {
+                "EnvShortName": "preprod",
+                "VpcCidr": "10.110.8.0/21",
+                "PublicSubnet1Az1": "10.110.8.0/25",
+                "PublicSubnet1Az2": "10.110.8.128/25",
+                "ApplicationSubnetAz1": "10.110.9.0/25",
+                "ApplicationSubnetAz2": "10.110.9.128/25",
+                "DatabaseSubnetAz1": "10.110.10.0/25",
+                "DatabaseSubnetAz2": "10.110.10.128/25",
+                "PenguinEc2InstanceSize": "m5.xlarge",
+                "ScalingGroupMin": 2,
+                "ScalingGroupMax": 3,
+                "LogRetentionInDays": 7
+            },
+            "ire-cm-penguin-prod": {
+                "EnvShortName": "prod",
+                "VpcCidr": "10.110.0.0/21",
+                "PublicSubnet1Az1": "10.110.0.0/25",
+                "PublicSubnet1Az2": "10.110.0.128/25",
+                "ApplicationSubnetAz1": "10.110.1.0/25",
+                "ApplicationSubnetAz2": "10.110.1.128/25",
+                "DatabaseSubnetAz1": "10.110.2.0/25",
+                "DatabaseSubnetAz2": "10.110.2.128/25",
+                "PenguinEc2InstanceSize": "m5.xlarge",
+                "ScalingGroupMin": 3,
+                "ScalingGroupMax": 5,
+                "LogRetentionInDays": 7
+            }
+        }
+    },
+    "Resources": {
+        "PenguinPublicAlbSecGroup": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+                "GroupDescription": "Access rules and definitions for the Primary Penguin Public API ALB",
+                "GroupName": {
+                    "Fn::Join": [
+                        "-",
+                        [
+                            "IRE-CM-Penguin",
+                            {
+                                "Fn::FindInMap": [
+                                    "PenguinEnvironmentSettings",
+                                    {
+                                        "Ref": "PenguinEnvironment"
+                                    },
+                                    "EnvShortName"
+                                ]
+                            },
+                            "ALB-Security-Group"
+                        ]
+                    ]
+                },
+                "VpcId": {
+                    "Ref": "PenguinVpcId"
+                },
+                "SecurityGroupIngress": [
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": 443,
+                        "ToPort": 443,
+                        "CidrIp": "0.0.0.0/0"
+                    }
+                ],
+                "SecurityGroupEgress": [
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": 443,
+                        "ToPort": 443,
+                        "CidrIp": {
+                            "Fn::FindInMap": [
+                                "PenguinEnvironmentSettings",
+                                {
+                                    "Ref": "PenguinEnvironment"
+                                },
+                                "ApplicationSubnetAz1"
+                            ]
+                        }
+                    },
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": 443,
+                        "ToPort": 443,
+                        "CidrIp": {
+                            "Fn::FindInMap": [
+                                "PenguinEnvironmentSettings",
+                                {
+                                    "Ref": "PenguinEnvironment"
+                                },
+                                "ApplicationSubnetAz2"
+                            ]
+                        }
+                    },
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": 80,
+                        "ToPort": 80,
+                        "CidrIp": {
+                            "Fn::FindInMap": [
+                                "PenguinEnvironmentSettings",
+                                {
+                                    "Ref": "PenguinEnvironment"
+                                },
+                                "ApplicationSubnetAz1"
+                            ]
+                        }
+                    },
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": 80,
+                        "ToPort": 80,
+                        "CidrIp": {
+                            "Fn::FindInMap": [
+                                "PenguinEnvironmentSettings",
+                                {
+                                    "Ref": "PenguinEnvironment"
+                                },
+                                "ApplicationSubnetAz2"
+                            ]
+                        }
+                    }
+                ]
+            }
+        },
+        "PenguinApplicationSecGroup": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+                "GroupDescription": "Access rules and definitions for Penguin Application Servers",
+                "GroupName": {
+                    "Fn::Join": [
+                        "-",
+                        [
+                            "IRE-CM-Penguin",
+                            {
+                                "Fn::FindInMap": [
+                                    "PenguinEnvironmentSettings",
+                                    {
+                                        "Ref": "PenguinEnvironment"
+                                    },
+                                    "EnvShortName"
+                                ]
+                            },
+                            "Application-Security-Group"
+                        ]
+                    ]
+                },
+                "VpcId": {
+                    "Ref": "PenguinVpcId"
+                },
+                "SecurityGroupIngress": [
+                    {
+                        "IpProtocol": "tcp",
+                        "Description": "ALB Traffic",
+                        "FromPort": 443,
+                        "ToPort": 443,
+                        "SourceSecurityGroupId": {
+                            "Fn::GetAtt": [
+                                "PenguinPublicAlbSecGroup",
+                                "GroupId"
+                            ]
+                        }
+                    },
+                    {
+                        "IpProtocol": "tcp",
+                        "Description": "Temporary health check on 80",
+                        "FromPort": 80,
+                        "ToPort": 80,
+                        "SourceSecurityGroupId": {
+                            "Fn::GetAtt": [
+                                "PenguinPublicAlbSecGroup",
+                                "GroupId"
+                            ]
+                        }
+                    },
+                    {
+                        "IpProtocol": "tcp",
+                        "Description": "Comms to OctopusDeploy Tentacle - required for code deployment",
+                        "FromPort": 10943,
+                        "ToPort": 10943,
+                        "CidrIp": "10.200.20.120/32"
+                    },
+                    {
+                        "IpProtocol": "-1",
+                        "FromPort": -1,
+                        "ToPort": -1,
+                        "Description": "Comms to Shared Services",
+                        "CidrIp": {
+                            "Ref": "SharedServicesCidr"
+                        }
+                    }
+                ],
+                "SecurityGroupEgress": [
+                    {
+                        "IpProtocol": "tcp",
+                        "Description": "Public 443 comms to internet",
+                        "FromPort": 443,
+                        "ToPort": 443,
+                        "CidrIp": "0.0.0.0/0"
+                    },
+                    {
+                        "IpProtocol": "tcp",
+                        "Description": "Public 80 comms to internet",
+                        "FromPort": 80,
+                        "ToPort": 80,
+                        "CidrIp": "0.0.0.0/0"
+                    },
+                    {
+                        "IpProtocol": "tcp",
+                        "Description": "Comms to OctopusDeploy Server - required for code deployment",
+                        "FromPort": 10943,
+                        "ToPort": 10943,
+                        "CidrIp": "10.200.20.120/32"
+                    },
+                    {
+                        "IpProtocol": "tcp",
+                        "Description": "Comms to EMEA MS SQL servers",
+                        "FromPort": 1433,
+                        "ToPort": 1433,
+                        "CidrIp": {
+                            "Fn::FindInMap": [
+                                "PenguinEnvironmentSettings",
+                                {
+                                    "Ref": "PenguinEnvironment"
+                                },
+                                "DatabaseSubnetAz1"
+                            ]
+                        }
+                    },
+                    {
+                        "IpProtocol": "tcp",
+                        "Description": "Comms to EMEA MS SQL servers",
+                        "FromPort": 1433,
+                        "ToPort": 1433,
+                        "CidrIp": {
+                            "Fn::FindInMap": [
+                                "PenguinEnvironmentSettings",
+                                {
+                                    "Ref": "PenguinEnvironment"
+                                },
+                                "DatabaseSubnetAz2"
+                            ]
+                        }
+                    },
+                    {
+                        "IpProtocol": "-1",
+                        "FromPort": -1,
+                        "ToPort": -1,
+                        "Description": "Allow all Comms to Shared Services",
+                        "CidrIp": {
+                            "Ref": "SharedServicesCidr"
+                        }
+                    }
+                ]
+            }
+        },
+        "PenguinApplicationAdSecGroup": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+                "GroupDescription": "Penguin Active Directory security group",
+                "GroupName": {
+                    "Fn::Join": [
+                        "-",
+                        [
+                            "IRE-CM-Penguin",
+                            {
+                                "Fn::FindInMap": [
+                                    "PenguinEnvironmentSettings",
+                                    {
+                                        "Ref": "PenguinEnvironment"
+                                    },
+                                    "EnvShortName"
+                                ]
+                            },
+                            "AD-Security-Group"
+                        ]
+                    ]
+                },
+                "VpcId": {
+                    "Ref": "PenguinVpcId"
+                },
+                "SecurityGroupEgress": [
+                    {
+                        "IpProtocol": "-1",
+                        "Description": "Allow all traffic to BHDC02",
+                        "FromPort": -1,
+                        "ToPort": -1,
+                        "CidrIp": "10.2.0.8/32"
+                    },
+                    {
+                        "IpProtocol": "-1",
+                        "Description": "Allow all traffic to ULDC04",
+                        "FromPort": -1,
+                        "ToPort": -1,
+                        "CidrIp": "10.2.0.9/32"
+                    },
+                    {
+                        "IpProtocol": "-1",
+                        "Description": "Allow all traffic to ULDC05",
+                        "FromPort": -1,
+                        "ToPort": -1,
+                        "CidrIp": "10.2.0.18/32"
+                    },
+                    {
+                        "IpProtocol": "-1",
+                        "Description": "Allow all traffic to NZDC01",
+                        "FromPort": -1,
+                        "ToPort": -1,
+                        "CidrIp": "10.2.21.8/32"
+                    },
+                    {
+                        "IpProtocol": "-1",
+                        "Description": "Allow all traffic to BRDC01",
+                        "FromPort": -1,
+                        "ToPort": -1,
+                        "CidrIp": "10.7.1.2/32"
+                    },
+                    {
+                        "IpProtocol": "-1",
+                        "Description": "Allow all traffic to BRDC02",
+                        "FromPort": -1,
+                        "ToPort": -1,
+                        "CidrIp": "10.7.1.6/32"
+                    },
+                    {
+                        "IpProtocol": "-1",
+                        "Description": "Allow all traffic to MYDC01",
+                        "FromPort": -1,
+                        "ToPort": -1,
+                        "CidrIp": "10.30.4.3/32"
+                    },
+                    {
+                        "IpProtocol": "-1",
+                        "Description": "Allow all traffic to CNDC03",
+                        "FromPort": -1,
+                        "ToPort": -1,
+                        "CidrIp": "10.88.1.3/32"
+                    },
+                    {
+                        "IpProtocol": "-1",
+                        "Description": "Allow all traffic to INDVKDC01",
+                        "FromPort": -1,
+                        "ToPort": -1,
+                        "CidrIp": "10.91.3.10/32"
+                    },
+                    {
+                        "IpProtocol": "-1",
+                        "Description": "Allow all traffic to INDAHDC01",
+                        "FromPort": -1,
+                        "ToPort": -1,
+                        "CidrIp": "10.91.3.11/32"
+                    },
+                    {
+                        "IpProtocol": "-1",
+                        "Description": "Allow all traffic to AZEUDC01",
+                        "FromPort": -1,
+                        "ToPort": -1,
+                        "CidrIp": "10.201.0.10/32"
+                    },
+                    {
+                        "IpProtocol": "-1",
+                        "Description": "Allow all traffic to AZUSDC01",
+                        "FromPort": -1,
+                        "ToPort": -1,
+                        "CidrIp": "10.202.2.6/32"
+                    }
+                ],
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Join": [
+                                "-",
+                                [
+                                    "IRE-CM-Penguin",
+                                    {
+                                        "Fn::FindInMap": [
+                                            "PenguinEnvironmentSettings",
+                                            {
+                                                "Ref": "PenguinEnvironment"
+                                            },
+                                            "EnvShortName"
+                                        ]
+                                    },
+                                    "AD-Security-Group"
+                                ]
+                            ]
+                        }
+                    }
+                ]
+            }
+        },
+        "PenguinApiAlb": {
+            "Type": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+            "Properties": {
+                "Type": "application",
+                "IpAddressType": "ipv4",
+                "Name": {
+                    "Fn::Join": [
+                        "-",
+                        [
+                            "IRE-CM-Penguin",
+                            {
+                                "Fn::FindInMap": [
+                                    "PenguinEnvironmentSettings",
+                                    {
+                                        "Ref": "PenguinEnvironment"
+                                    },
+                                    "EnvShortName"
+                                ]
+                            },
+                            "ALB"
+                        ]
+                    ]
+                },
+                "SecurityGroups": [
+                    {
+                        "Ref": "PenguinPublicAlbSecGroup"
+                    }
+                ],
+                "Subnets": [
+                    {
+                        "Ref": "PenguinPublicSubnetId1Az1"
+                    },
+                    {
+                        "Ref": "PenguinPublicSubnetId1Az2"
+                    }
+                ]
+            }
+        },
+        "PenguinApiLaunchTemplate": {
+            "Type": "AWS::EC2::LaunchTemplate",
+            "Properties": {
+                "LaunchTemplateData": {
+                    "ImageId": {
+                        "Ref": "PenguinApiAmiId"
+                    },
+                    "InstanceType": {
+                        "Fn::FindInMap": [
+                            "PenguinEnvironmentSettings",
+                            {
+                                "Ref": "PenguinEnvironment"
+                            },
+                            "PenguinEc2InstanceSize"
+                        ]
+                    },
+                    "IamInstanceProfile": {
+                        "Arn": {
+                            "Ref": "PenguinApiIamInstanceProfile"
+                        }
+                    },
+                    "NetworkInterfaces": [
+                        {
+                            "DeviceIndex": 0,
+                            "AssociatePublicIpAddress": false,
+                            "DeleteOnTermination": true,
+                            "Groups": [
+                                {
+                                    "Ref": "PenguinApplicationSecGroup"
+                                },
+                                {
+                                    "Ref": "PenguinApplicationAdSecGroup"
+                                }
+                            ]
+                        }
+                    ],
+                    "TagSpecifications": [
+                        {
+                            "ResourceType": "instance",
+                            "Tags": [
+                                {
+                                    "Key": "Name",
+                                    "Value": {
+                                        "Fn::Join": [
+                                            "-",
+                                            [
+                                                "IRE-CM-Penguin",
+                                                {
+                                                    "Fn::FindInMap": [
+                                                        "PenguinEnvironmentSettings",
+                                                        {
+                                                            "Ref": "PenguinEnvironment"
+                                                        },
+                                                        "EnvShortName"
+                                                    ]
+                                                },
+                                                "API-LaunchTemplate"
+                                            ]
+                                        ]
+                                    }
+                                }
+                            ]
+                        }
+                    ],
+                    "BlockDeviceMappings": [
+                        {
+                            "DeviceName": "/dev/sda1",
+                            "Ebs": {
+                                "VolumeSize": 100,
+                                "VolumeType": "gp2",
+                                "DeleteOnTermination": true,
+                                "Encrypted": true,
+                                "KmsKeyId": {
+                                    "Ref": "PenguinKmsCmkArn"
+                                }
+                            }
+                        }
+                    ],
+                    "UserData": {
+                        "Fn::Base64": {
+                            "Fn::Sub": "<powershell>\n& {\n  BEGIN {\n      $LASTEXITCODE = 0\n      $ErrorActionPreference = \"Stop\";\n\n      $S3BucketName = \"${PenguinInfraBucketName}\"\n      $S3BucketFolder = \"${PenguinInfraBucketFolder}\"\n      $LocalScriptFolder = \"C:\\Configuration\"\n      $LocalHelloWorldFile = \"C:\\inetpub\\wwwroot\\index.html\"\n      $EventLogSource = \"Cover-More SOE Customisation\";\n      \n      Import-Module AWSPowerShell\n      Import-Module Microsoft.PowerShell.Management\n      \n      # WinServer AMI's don't always specify TLS1.2, & Powershell 5 still defaults to TLS1.0\n      [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12;\n      \n      if (-not ([System.Diagnostics.EventLog]::SourceExists($EventLogSource))) {\n          Write-Warning \"Event log source not located, creating now.\"\n          try {\n              New-EventLog -LogName Application -Source $EventLogSource;\n          }\n          catch {\n              Write-Error \"[X] Event log source could not be created. Please try again as an Administrator.\"\n              return;\n          }\n      }\n\n      function log { \n          param([System.Diagnostics.EventLogEntryType]$type = \"Information\", [string]$msg)\n          Write-EventLog -LogName \"Application\" -Source $EventLogSource -EntryType $type -EventID 1 -Message $msg \n          Write-Output \"$type`t`t$msg\"\n      }\n\n      log -msg \"$(if ($PSCommandPath) { \"'$PSCommandPath'\" } else { \"Initialisation\" }) has started.\"\n  }\n\n  PROCESS {\n      try {\n          # Check that IIS is installed/enabled\n          if ($(Get-WindowsFeature Web-Server).InstallState -ne \"Installed\") {\n              log \"Warn\" \"Windows Feature 'Web-Server' needs to be enabled for the healthchecks to work. Configuring now.\"\n              Install-WindowsFeature Web-Server -IncludeManagementTools;\n              log -msg \"Windows Feature 'Web-Server' has been installed.\"\n              Install-WindowsFeature Web-Mgmt-Tools;\n              log -msg \"Windows Feature 'Web-Mgmt-Tools' has been installed.\"\n              Enable-WindowsOptionalFeature -Online -FeatureName \"IIS-WebServer\" -All;\n              log -msg \"Windows Feature 'IIS-WebServer' has been enabled.\"\n          }\n          log -msg \"IIS has been enabled.\"\n\n          # Make sure there is a basic index.html available to answer requests\n          if (-not (Test-Path $LocalHelloWorldFile)) {\n              Write-Output \"<h1>Hello World</h1>\" | Out-File -FilePath $LocalHelloWorldFile;\n              log -msg \"'Hello World' index.html dumped to local wwwroot folder: '$LocalHelloWorldFile'.\"\n          }\n          $response = (Invoke-WebRequest \"http://localhost\" -UseBasicParsing);\n          log -msg \"Basic request to 'http://localhost' returned the following: '$($response.StatusCode) $($response.StatusDescription)'\"\n\n          # Check that the AWS.Tools.S3 module is available:\n          if ($null -eq $(Get-Command \"Get-S3Object\")) {\n              log \"Warn\" \"PowerShell Module 'AWS.Tools.S3' needs to be installed & available for this script to function. Installing now.\"\n              Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force;\n              log -msg \"NuGet package provider has been installed.\"\n              Install-Module -Name AWS.Tools.S3 -Force -AllowClobber;\n              log -msg \"PowerShell Module 'AWS.Tools.S3' has been installed.\"\n              Import-Module -Name AWS.Tools.S3;\n              log -msg \"PowerShell Module 'AWS.Tools.S3' has been imported into this session.\"\n          }\n          else {\n              log -msg \"PowerShell Module 'AWS.Tools.S3' availability has been confirmed.\"\n          }\n          log -msg \"AWSPowerShellVersion Info:`n$(Get-AWSPowerShellVersion -ListServiceVersionInfo)\"\n\n          # Download the contents of the configuration bucket\n          if (-not $S3BucketName) {\n              log \"Error\" \"[X] The S3Bucket name variable was not defined. Please check the variables you provided in your RFC!\"\n          } elseif (Get-S3Object -BucketName $S3BucketName) {\n              Read-S3Object -BucketName $S3BucketName -KeyPrefix $S3BucketFolder -Folder $LocalScriptFolder\n              log -msg \"The contents of the '$S3BucketFolder' folder in the '$S3BucketName' S3Bucket have been downloaded to '$LocalScriptFolder'.\"\n          }\n          else {\n              log \"Error\" \"[X] S3Bucket at '$S3BucketName' is not accessible. Please ensure that permissions are set correctly.\"\n          }\n\n          # Load Environment Variables if they are defined/available\n          $EnvVarsFile = (Join-Path $LocalScriptFolder \"_env.ps1\")\n          if (Test-Path $EnvVarsFile) { \n              log -msg \"File '$EnvVarsFile' exists. Loading environment variables from it...\"; \n              . $EnvVarsFile; \n              log -msg \"Environment variables were loaded from file: '$EnvVarsFile'.\"; \n          }\n          else {\n              log \"Error\" \"[X] File '$EnvVarsFile' not found. Please make sure that the `_env.ps1` file is available at the following path: 's3://$S3BucketName/$S3BucketFolder/_env.ps1'.\"; \n          }\n          \n          # Run each script that was downloaded, excluding any prefixed with underscore\n          $scripts = $(Get-ChildItem -Path (Join-Path $LocalScriptFolder '*') -File -Exclude \"_*\");\n          log -msg \"Found $($scripts.Length) scripts in the '$LocalScriptFolder' folder. Iterating & executing them now.\";\n          foreach ($script in $scripts) {\n              log -msg \"Configuration script '$($script.FullName)' located. Executing now.\";\n              Import-Module $script.FullName\n              . $script.BaseName *>&1 | ForEach-Object { log -msg \"$($script.BaseName): $_\" };\n              log -msg \"Execution of configuration script '$($script.FullName)' completed.\";\n          }\n      }\n      catch {\n          log \"Error\" \"[X] An error occurred that could not be automatically resolved: $_\"\n          throw $_;\n      }\n  }\n\n  END {\n      log -msg \"$(if ($PSCommandPath) { \"'$PSCommandPath'\" } else { \"Initialisation\" }) has completed successfully.\"\n  }\n};\n</powershell>\n"
+                        }
+                    }
+                }
+            }
+        },
+        "PenguinApplicationScalingGroup": {
+            "Type": "AWS::AutoScaling::AutoScalingGroup",
+            "DependsOn": [
+                "PenguinB2bLogGroup",
+                "PenguinMsadLogGroup",
+                "PenguinPaymentGatewayLogGroup",
+                "PenguinWebLogGroup",
+                "PenguinWebErrorLogGroup",
+                "PenguinWebInfoLogGroup",
+                "PenguinWebB2cLogGroup",
+                "PenguinWebOtherLogGroup"
+            ],
+            "CreationPolicy": {
+                "ResourceSignal": {
+                    "Timeout": "PT60M",
+                    "Count": {
+                        "Fn::FindInMap": [
+                            "PenguinEnvironmentSettings",
+                            {
+                                "Ref": "PenguinEnvironment"
+                            },
+                            "ScalingGroupMin"
+                        ]
+                    }
+                }
+            },
+            "UpdatePolicy": {
+                "AutoScalingRollingUpdate": {
+                    "MaxBatchSize": 1,
+                    "MinInstancesInService": 1,
+                    "PauseTime": "PT60M",
+                    "WaitOnResourceSignals": true
+                }
+            },
+            "Properties": {
+                "VPCZoneIdentifier": [
+                    {
+                        "Ref": "PenguinApplicationSubnetIdAz1"
+                    },
+                    {
+                        "Ref": "PenguinApplicationSubnetIdAz2"
+                    }
+                ],
+                "HealthCheckGracePeriod": 3600,
+                "HealthCheckType": "ELB",
+                "LaunchTemplate": {
+                    "LaunchTemplateId": {
+                        "Ref": "PenguinApiLaunchTemplate"
+                    },
+                    "Version": {
+                        "Fn::GetAtt": [
+                            "PenguinApiLaunchTemplate",
+                            "LatestVersionNumber"
+                        ]
+                    }
+                },
+                "MinSize": {
+                    "Fn::FindInMap": [
+                        "PenguinEnvironmentSettings",
+                        {
+                            "Ref": "PenguinEnvironment"
+                        },
+                        "ScalingGroupMin"
+                    ]
+                },
+                "MaxSize": {
+                    "Fn::FindInMap": [
+                        "PenguinEnvironmentSettings",
+                        {
+                            "Ref": "PenguinEnvironment"
+                        },
+                        "ScalingGroupMax"
+                    ]
+                },
+                "TargetGroupARNs": [
+                    {
+                        "Ref": "PenguinApiAlbTargetGroup"
+                    }
+                ],
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Join": [
+                                "-",
+                                [
+                                    "IRE-CM-Penguin",
+                                    {
+                                        "Fn::FindInMap": [
+                                            "PenguinEnvironmentSettings",
+                                            {
+                                                "Ref": "PenguinEnvironment"
+                                            },
+                                            "EnvShortName"
+                                        ]
+                                    },
+                                    "App-Server"
+                                ]
+                            ]
+                        },
+                        "PropagateAtLaunch": true
+                    },
+                    {
+                        "Key": "Backup",
+                        "Value": "false",
+                        "PropagateAtLaunch": true
+                    },
+                    {
+                        "Key": "Role",
+                        "Value": "AppServer",
+                        "PropagateAtLaunch": true
+                    }
+                ]
+            }
+        },
+        "ScalingPolicy": {
+            "Type": "AWS::AutoScaling::ScalingPolicy",
+            "Properties": {
+                "AutoScalingGroupName": {
+                    "Ref": "PenguinApplicationScalingGroup"
+                },
+                "PolicyType": "TargetTrackingScaling",
+                "TargetTrackingConfiguration": {
+                    "PredefinedMetricSpecification": {
+                        "PredefinedMetricType": "ASGAverageCPUUtilization"
+                    },
+                    "TargetValue": 75
+                }
+            }
+        },
+        "PenguinApiAlbTargetGroup": {
+            "Type": "AWS::ElasticLoadBalancingV2::TargetGroup",
+            "Properties": {
+                "HealthCheckIntervalSeconds": 30,
+                "HealthCheckPath": "/",
+                "HealthCheckPort": "80",
+                "HealthCheckProtocol": "HTTP",
+                "HealthCheckTimeoutSeconds": 5,
+                "HealthyThresholdCount": 3,
+                "UnhealthyThresholdCount": 5,
+                "Port": 443,
+                "Protocol": "HTTPS",
+                "Matcher": {
+                    "HttpCode": "200"
+                },
+                "TargetGroupAttributes": [
+                    {
+                        "Key": "stickiness.enabled",
+                        "Value": "true"
+                    }
+                ],
+                "VpcId": {
+                    "Ref": "PenguinVpcId"
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Join": [
+                                "-",
+                                [
+                                    "IRE-CM-Penguin",
+                                    {
+                                        "Fn::FindInMap": [
+                                            "PenguinEnvironmentSettings",
+                                            {
+                                                "Ref": "PenguinEnvironment"
+                                            },
+                                            "EnvShortName"
+                                        ]
+                                    },
+                                    "App-TargetGroup"
+                                ]
+                            ]
+                        }
+                    }
+                ]
+            }
+        },
+        "ALBListener": {
+            "Type": "AWS::ElasticLoadBalancingV2::Listener",
+            "Properties": {
+                "DefaultActions": [
+                    {
+                        "Type": "forward",
+                        "TargetGroupArn": {
+                            "Ref": "PenguinApiAlbTargetGroup"
+                        }
+                    }
+                ],
+                "LoadBalancerArn": {
+                    "Ref": "PenguinApiAlb"
+                },
+                "Port": 443,
+                "Protocol": "HTTPS",
+                "SslPolicy": "ELBSecurityPolicy-2016-08",
+                "Certificates": [
+                    {
+                        "CertificateArn": {
+                            "Ref": "PenguinAcmCertificateArn"
+                        }
+                    }
+                ]
+            }
+        },
+        "PenguinB2bLogGroup": {
+            "Type": "AWS::Logs::LogGroup",
+            "Properties": {
+                "LogGroupName": {
+                    "Fn::Sub": "customer-penguin-${PenguinEnvironment}-b2b_reporting-logs"
+                },
+                "RetentionInDays": {
+                    "Fn::FindInMap": [
+                        "PenguinEnvironmentSettings",
+                        {
+                            "Ref": "PenguinEnvironment"
+                        },
+                        "LogRetentionInDays"
+                    ]
+                }
+            }
+        },
+        "PenguinMsadLogGroup": {
+            "Type": "AWS::Logs::LogGroup",
+            "Properties": {
+                "LogGroupName": {
+                    "Fn::Sub": "customer-penguin-${PenguinEnvironment}-msad-logs"
+                },
+                "RetentionInDays": {
+                    "Fn::FindInMap": [
+                        "PenguinEnvironmentSettings",
+                        {
+                            "Ref": "PenguinEnvironment"
+                        },
+                        "LogRetentionInDays"
+                    ]
+                }
+            }
+        },
+        "PenguinPaymentGatewayLogGroup": {
+            "Type": "AWS::Logs::LogGroup",
+            "Properties": {
+                "LogGroupName": {
+                    "Fn::Sub": "customer-penguin-${PenguinEnvironment}-paymentgateway-logs"
+                },
+                "RetentionInDays": {
+                    "Fn::FindInMap": [
+                        "PenguinEnvironmentSettings",
+                        {
+                            "Ref": "PenguinEnvironment"
+                        },
+                        "LogRetentionInDays"
+                    ]
+                }
+            }
+        },
+        "PenguinWebLogGroup": {
+            "Type": "AWS::Logs::LogGroup",
+            "Properties": {
+                "LogGroupName": {
+                    "Fn::Sub": "customer-penguin-${PenguinEnvironment}-web-log"
+                },
+                "RetentionInDays": {
+                    "Fn::FindInMap": [
+                        "PenguinEnvironmentSettings",
+                        {
+                            "Ref": "PenguinEnvironment"
+                        },
+                        "LogRetentionInDays"
+                    ]
+                }
+            }
+        },
+        "PenguinWebErrorLogGroup": {
+            "Type": "AWS::Logs::LogGroup",
+            "Properties": {
+                "LogGroupName": {
+                    "Fn::Sub": "customer-penguin-${PenguinEnvironment}-web_error-log"
+                },
+                "RetentionInDays": {
+                    "Fn::FindInMap": [
+                        "PenguinEnvironmentSettings",
+                        {
+                            "Ref": "PenguinEnvironment"
+                        },
+                        "LogRetentionInDays"
+                    ]
+                }
+            }
+        },
+        "PenguinWebInfoLogGroup": {
+            "Type": "AWS::Logs::LogGroup",
+            "Properties": {
+                "LogGroupName": {
+                    "Fn::Sub": "customer-penguin-${PenguinEnvironment}-web_info-log"
+                },
+                "RetentionInDays": {
+                    "Fn::FindInMap": [
+                        "PenguinEnvironmentSettings",
+                        {
+                            "Ref": "PenguinEnvironment"
+                        },
+                        "LogRetentionInDays"
+                    ]
+                }
+            }
+        },
+        "PenguinWebB2cLogGroup": {
+            "Type": "AWS::Logs::LogGroup",
+            "Properties": {
+                "LogGroupName": {
+                    "Fn::Sub": "customer-penguin-${PenguinEnvironment}-web_b2c-log"
+                },
+                "RetentionInDays": {
+                    "Fn::FindInMap": [
+                        "PenguinEnvironmentSettings",
+                        {
+                            "Ref": "PenguinEnvironment"
+                        },
+                        "LogRetentionInDays"
+                    ]
+                }
+            }
+        },
+        "PenguinWebOtherLogGroup": {
+            "Type": "AWS::Logs::LogGroup",
+            "Properties": {
+                "LogGroupName": {
+                    "Fn::Sub": "customer-penguin-${PenguinEnvironment}-web_other-log"
+                },
+                "RetentionInDays": {
+                    "Fn::FindInMap": [
+                        "PenguinEnvironmentSettings",
+                        {
+                            "Ref": "PenguinEnvironment"
+                        },
+                        "LogRetentionInDays"
+                    ]
+                }
+            }
+        }
+    }
+}
