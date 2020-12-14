@@ -6,8 +6,9 @@ Import-Module WebAdministration
 #	Please delete this directory before running this script if a new install is required
 #   Please run after giving elevated permissions using Set-ExecutionPolicy Unrestricted
 
-$envPrefix = "test2"							#the environment to setup test/test2/test3/staging/prod/training
-$deploymentStack = "AU"							#the global deployment location AU/UK
+$envPrefix = if ($ENV:CoverMoreEnvironment) { $ENV:CoverMoreEnvironment } else { "dev1" } #the environment to setup test/test2/test3/staging/prod/training
+$deploymentStack = if ($ENV:CoverMoreDeploymentStack) { $ENV:CoverMoreDeploymentStack } else { "UK" } #the global deployment location AU/UK
+
 $rootWebSitePath = "c:\inetpub\wwwroot\"		#the location of the root web folder
 $rootContentPath = "c:\Contents\"	 			#the location of the root contents folder
 												#a ; seperated list of web app names for each affiliate
