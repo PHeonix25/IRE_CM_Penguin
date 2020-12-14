@@ -163,7 +163,7 @@ function Update-OctopusDeployReleases {
                     $deploymentStatus = (Invoke-RestMethod "$OctopusServerUrl/api/tasks/$taskId/details?verbose=false" -Headers $header)
                     $deploymentStatusState = $deploymentStatus.Task.State
 
-                    if ($deploymentStatusState -eq "Success" -or $deploymentStatusState -eq "Failed"){
+                    if ($deploymentStatus.Task.IsCompleted) {
                         $deploymentIsActive = $false
                     }
                     else{
