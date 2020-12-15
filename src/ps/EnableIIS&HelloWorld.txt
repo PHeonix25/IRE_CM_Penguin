@@ -1,0 +1,16 @@
+UserData: 
+  Fn::Base64: !Sub |
+  <powershell>
+  & {
+    if ($(Get-WindowsFeature Web-Server).InstallState -ne "Installed") {
+        Install-WindowsFeature Web-Server -IncludeManagementTools;
+        Write-Output "Web-Server installed successfully."
+    }
+    $LocalHelloWorldFile = "C:\inetpub\wwwroot\index.html"
+    if (-not (Get-Item -Path $LocalHelloWorldFile)) {
+        Write-Output "<h1>Hello World</h1>" | Out-File -FilePath $LocalHelloWorldFile;
+    }
+    $response = (Invoke-WebRequest "http://localhost" -UseBasicParsing);
+    Write-Output "Basic request to 'http://localhost' returned the following: '$($response.StatusCode) $($response.StatusDescription)'"
+  };
+  </powershell>

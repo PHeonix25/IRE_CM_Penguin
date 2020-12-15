@@ -140,7 +140,7 @@ function Add-OctopusDeployEnvironment {
             }
 
             $version = & dotnet $ToolsDirectory\octo.dll "version"
-            Write-Host -ForegroundColor Green "Tools found! 'octo' version: $version"
+            Write-Output "Tools found! 'octo' version: $version"
             Invoke-Expression "dotnet $ToolsDirectory\octo.dll create-environment --server $OctopusServer --apiKey $OctopusApiKey --name $Name --ignoreIfExists"
         }
         catch {
