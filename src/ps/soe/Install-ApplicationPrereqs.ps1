@@ -56,7 +56,9 @@ function Install-ApplicationPrereqs {
             foreach ($feature in ($features -split ';')) {
                 if ($(Get-WindowsFeature $feature).InstallState -ne "Installed") {
                     Write-Warning "Windows Feature '$feature' needs to be enabled for the applications to work. Configuring now."
-                    Install-WindowsFeature $feature;
+                    $result = Install-WindowsFeature $feature;
+                    Write-Output ("Windows Feature '$feature' was installed. Exit code was $($result.ExitCode)." + 
+                        $(if ($result.FeatureResult) { "`nNested Windows Features installed: $($result.FeatureResult -join ', ')." }));
                 }
             }
 
