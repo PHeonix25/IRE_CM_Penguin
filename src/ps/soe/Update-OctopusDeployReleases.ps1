@@ -73,7 +73,8 @@ function Update-OctopusDeployReleases {
         [Alias("env")][string]$EnvironmentName,
         [string]$OctopusServerApiKey,
         [string]$OctopusServerUrl,
-        [string]$SpaceId = "Spaces-1"
+        [string]$SpaceId = "Spaces-1",
+        [string]$TentacleName
     )
     
     BEGIN {
@@ -100,6 +101,10 @@ function Update-OctopusDeployReleases {
                 $ProjectName = $ENV:OctopusTentacleProjects
                 Write-Verbose "OctopusDeploy Project list loaded from matching environment variable."
             }
+            if ((-not $TentacleName) -and $ENV:OctopusTentacleInstanceName) {
+                $TentacleName = $ENV:OctopusTentacleInstanceName;
+                Write-Verbose "OctopusDeploy TentacleName loaded from matching environment variable."
+            }
         }
 
         # Validate/assign parameters
@@ -119,6 +124,10 @@ function Update-OctopusDeployReleases {
             Write-Error "OctopusDeploy Projects need to be specified. Script cannot continue."
             throw [System.ArgumentNullException] "ProjectName"
         }
+        if (-not $TentacleName) {
+            Write-Error "OctopusDeploy TentacleName is not available. Script cannot continue."
+            throw [System.ArgumentNullException] "TentacleName"
+        }
         
         $header = @{ "X-Octopus-ApiKey" = $OctopusServerApiKey }
     }
@@ -126,58 +135,71 @@ function Update-OctopusDeployReleases {
     PROCESS {
         try {
 
+            $machine = (Invoke-RestMethod "$OctopusServerUrl/api/$spaceId/machines/all" -Headers $header) | Where-Object { $_.Name -eq $TentacleName };
+            $machineId = $machine.Id
+            Write-Output "The machineId for this machine ('$TentacleName') is '$machineId'."
+            
+            $environments = (Invoke-RestMethod "$OctopusServerUrl/api/$spaceId/environments?name=$([System.Web.HTTPUtility]::UrlEncode($EnvironmentName))&skip=0&take=1" -Headers $header)
+            $environmentId = $environments.Items[0].Id
+            Write-Output "The environmentId for the '$EnvironmentName' environment is '$environmentId'."
+
             foreach ($name in ($ProjectName -split ';')) { 
 
                 $projects = (Invoke-RestMethod "$OctopusServerUrl/api/$spaceId/projects?name=$([System.Web.HTTPUtility]::UrlEncode($name))&skip=0&take=1" -Headers $header)
                 $projectId = $projects.Items[0].Id
                 Write-Output "The projectId for '$name' is '$projectId'."
 
-                $environments = (Invoke-RestMethod "$OctopusServerUrl/api/$spaceId/environments?name=$([System.Web.HTTPUtility]::UrlEncode($EnvironmentName))&skip=0&take=1" -Headers $header)
-                $environmentId = $environments.Items[0].Id
-                Write-Output "The environmentId for '$EnvironmentName' is '$environmentId'."
-
-                $deployment = (Invoke-RestMethod "$OctopusServerUrl/api/$spaceId/deployments?projects=$projectId&environments=$environmentId&skip=0&take=1" -Headers $header)
-                $releaseId = $deployment.Items[0].ReleaseId
+                $deployments = (Invoke-RestMethod "$OctopusServerUrl/api/$spaceId/deployments?projects=$projectId&environments=$environmentId&skip=0&take=1" -Headers $header)
+                $releaseId = $deployments.Items[0].ReleaseId
                 Write-Output "The most recent release for '$name' in the '$EnvironmentName' environment is '$releaseId'."
 
                 $body = @{
                     EnvironmentId = "$environmentId"
                     ExcludedMachineIds = @()
-                    ForcePackageDownload = $False
+                    ForcePackageDownload = $false
                     ForcePackageRedeployment = $false
                     FormValues = @{}
                     QueueTime = $null
                     QueueTimeExpiry = $null
                     ReleaseId = "$releaseId"
                     SkipActions = @()
-                    SpecificMachineIds = @() # This machine only?
+                    SpecificMachineIds = @($machineId) # This machine only
                     TenantId = $null
                     UseGuidedFailure = $false
                 } | ConvertTo-Json
 
-                $redeployment = (Invoke-RestMethod "$OctopusServerUrl/api/$spaceId/deployments" -Headers $header -Method Post -Body $body -ContentType "application/json")
-                $taskId = $redeployment.TaskId
-                $deploymentIsActive = $true
+                Write-Output "Requesting re-deployment of the latest release ($releaseId) of the '$name' project (aka $projectId) in this environment ($environmentId), filtered to this machine ($machineId)."
+                $deploymentIsActive = $false
+                $deploymentState = 'NotRequested'
+
+                try {
+                    $taskId = (Invoke-RestMethod "$OctopusServerUrl/api/$spaceId/deployments" -Headers $header -Method Post -Body $body -ContentType "application/json").TaskId; 
+                    $deploymentIsActive = $true
+                }
+                catch {
+                    # Occasionally the Cover-More developers create releases without actually deploying them into environments. 
+                    # When you do this, the API gets confused when you ask it to "redeploy" the release.
+                    # This catch block will ignore projects that have been created, but not (yet?) deployed into this environment.
+                    Write-Warning "Requesting a re-deployment failed with the following response: $_";
+                }
 
                 while ($deploymentIsActive) {
-                    $deploymentStatus = (Invoke-RestMethod "$OctopusServerUrl/api/tasks/$taskId/details?verbose=false" -Headers $header)
-                    $deploymentStatusState = $deploymentStatus.Task.State
+                    $deploymentTask = (Invoke-RestMethod "$OctopusServerUrl/api/tasks/$taskId/details?verbose=false" -Headers $header).Task;
+                    $deploymentState = $deploymentTask.State
 
-                    if ($deploymentStatus.Task.IsCompleted) {
+                    if ($deploymentTask.IsCompleted) {
                         $deploymentIsActive = $false
-                    }
-                    else{
-                        Write-Output "Deployment is still active...checking again in 15 seconds"
+                        if ($deploymentState -eq "Failed") {
+                            Write-Error "Redeployment of '$name' errored. Please check your OctopusDeploy Server logs for failure reason, fix that, and try again." 
+                        }
+                    } else {
+                        Write-Output "Deployment is still active... Checking again in 15 seconds."
                         Start-Sleep -Seconds 15
                     }
-                    if ($deploymentStatusState -eq "Failed") {
-                        Write-Error "Redeployment of '$name' errored. Please check your OctopusDeploy Server logs for failure reason, fix that, and try again." 
-                    }
-                } 
-
-                Write-Output "Redeployment of '$name' has finished. Status was '$deploymentStatusState'."
+                }  
+                
+                Write-Output "Redeployment of '$name' has finished. Status was '$deploymentState'."
             }
-
         }
         catch {
             Write-Error "An error occurred that could not be automatically resolved: $_"
