@@ -67,13 +67,20 @@ function Invoke-CustomerProvidedScripts {
                 Write-Warning "$execName was not located at '$handle'. Please double-check the path and try again."
             }
 
-            # Run each script that was downloaded, excluding any prefixed with underscore
+            # Run each 'Deploy' script that was downloaded, excluding any prefixed with underscore
             $scripts = $(Get-ChildItem -Path (Join-Path $ConfigLocation 'Deploy*') -File -Exclude "_*");
             Write-Verbose "Found $($scripts.Length) 'Deploy' scripts in the '$ConfigLocation' folder. Iterating & executing them now.";
             foreach ($script in $scripts) {
                 Write-Verbose "Configuration script '$($script.FullName)' located. Executing now.";
                 . "$script";
                 Write-Verbose "Execution of configuration script '$($script.FullName)' completed.";
+            }
+
+            # EXTRA STEP - Add HTTPS to each site:
+            foreach ($site in $(Get-ChildItem IIS:\Sites)) {
+                Import-Module WebAdministration;
+                New-WebBinding -Name "$($site.Name)" -IpAddress "*" -Protocol "https" -Port 443 -HostHeader "$($site.Name)"
+                Write-Output "New HTTPS binding has been added to '$($site.Name)'."
             }
 
         }
