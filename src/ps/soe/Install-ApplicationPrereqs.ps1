@@ -3,33 +3,24 @@
 
 .VERSION 1.0
 
-.GUID 8c32d3e2-ac85-4d4b-afd4-9fbc97316419
+.GUID adbb138d-52b2-42b9-b8e5-b3affa172f29
 
 .AUTHOR pat.hermens@slalom.com
 
 .COMPANYNAME Slalom Build
 
-.TAGS Installation Configuration Tenable Nessus Agent 
+.TAGS Installation Configuration Windows Server
 
 #>
 
 <# 
 
 .SYNOPSIS 
- Downloads, installs, and configures a Tenable Nessus Agent
+ Downloads, installs, and configures Windows Server 2016 to client specifications
 
 .DESCRIPTION
- Downloads the latest Nessus Agent (8.2.0), compares the SHA256 hash (to ensure integrity), 
- then executes it in the background (via 'msiexec /i /qn') to install & configure the agent.
-
-.PARAMETER NessusKey
- The key with enough permissions to add this agent to the requested group
- 
-.PARAMETER NessusGroups
- The name of the groups that this Nessus Agent should be subscribed to
-
-.PARAMETER NessusInstanceName
- The identifier that you want to use for this instance in Tenable Cloud
+ Enables a bunch of additional Windows Features in the build, and then 
+ downloads the URL Rewrite module (from S3) and installs it.
 
 .INPUTS
  None
