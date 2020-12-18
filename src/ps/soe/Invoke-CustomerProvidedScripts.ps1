@@ -76,11 +76,18 @@ function Invoke-CustomerProvidedScripts {
                 Write-Verbose "Execution of configuration script '$($script.FullName)' completed.";
             }
 
-            # EXTRA STEP - Add HTTPS to each site:
-            foreach ($site in $(Get-ChildItem IIS:\Sites)) {
-                Import-Module WebAdministration;
-                New-WebBinding -Name "$($site.Name)" -IpAddress "*" -Protocol "https" -Port 443 -HostHeader "$($site.Name)"
-                Write-Output "New HTTPS binding has been added to '$($site.Name)'."
+            # EXTRA STEP - Add HTTPS to each site (except the 'Default Web Site')
+            Import-Module WebAdministration;
+            foreach ($site in $(Get-ChildItem IIS:\Sites | Where-Object Name -ne "Default Web Site")) {
+                $siteName = $site.Name;
+                New-WebBinding -Name "$siteName" -IpAddress "*" -Protocol "https" -Port 443 -HostHeader "$siteName"
+                Write-Output "New HTTPS binding has been added to '$siteName'."
+
+                # EXTRA EXTRA STEP - Add Windows Auth & disable Anonymous access for all sites
+                Set-WebConfigurationProperty -Filter "/system.webServer/security/authentication/anonymousAuthentication" -Name "Enabled" -Value "False" -PSPath "IIS:\" -Location "$siteName"
+                Write-Output "Disabled anonymous authentication for '$siteName'."
+                Set-WebConfigurationProperty -Filter "/system.webServer/security/authentication/windowsAuthentication" -Name "Enabled" -Value "True" -PSPath "IIS:\" -Location "$siteName"
+                Write-Output "Enabled Windows authentication for '$siteName'."
             }
 
         }
