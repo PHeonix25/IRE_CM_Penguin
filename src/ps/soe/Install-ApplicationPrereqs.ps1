@@ -41,13 +41,15 @@ function Install-ApplicationPrereqs {
                     "Net-Framework-Features;Net-Framework-Core;" + # .NET Framework 3.5
                     "Net-Framework-45-Features;Net-Framework-45-Core;Net-Framework-45-ASPNET;Net-WCF-Services45;" + # .NET Framework 4.x
                     "Web-App-Dev;Web-Net-Ext;Web-Net-Ext45;Web-Asp-Net;Web-Asp-Net45;Web-ISAPI-Ext;Web-ISAPI-Filter;" + # App Development Role
-                    "Web-Windows-Auth" # Windows Authentication inside IIS
+                    "Web-Windows-Auth;Web-Basic-Auth;" + # Windows + Basic Authentication inside IIS
+                    "Web-Dyn-Compression;Web-Http-Redirect;Web-Includes;Web-Custom-Logging;Web-Http-Tracing;Web-Request-Monitor;" + # Additional IIS features
+                    "Web-CGI;" # Application functionality
 
-        # ARR 3.0 + Redirect
-        $OfflineInstaller = "rewrite_amd64_en-US.msi"
+        # Installable dependencies
         $S3Region =  "eu-west-1"
         $S3BucketName = $ENV:PenguinInfraBucketName
-        $S3BucketObject = (Join-Path "soe\installers" $OfflineInstaller)
+        $S3BucketFolder = "soe\installers\app-prerequisites"
+        $LocalScriptFolder = "C:\Configuration\installers"
     }
 
     PROCESS {
@@ -62,28 +64,39 @@ function Install-ApplicationPrereqs {
                 }
             }
 
-            # Download installer package
-            if (Test-Path $OfflineInstaller) {
-                Write-Warning "Previously downloaded offline installer of the UrlRewrite Module located ('$(Resolve-Path $OfflineInstaller)'); Skipping download!"
-            } else {
-                # Fetch from S3?
-                if (-not $S3BucketName) {
-                    throw "S3BucketName for RewriteModule installer was not specified. Please populate the 'PenguinInfraBucketName' environment variable!"
-                } elseif (Get-S3Object -Region $S3Region -BucketName $S3BucketName) {
-                    Read-S3Object -Region $S3Region -BucketName $S3BucketName -Key $S3BucketObject -File $OfflineInstaller
-                    Write-Output "'$S3BucketObject' from the '$S3BucketName' S3Bucket has been downloaded to '$(Resolve-Path $OfflineInstaller)'."
-                } else {
-                    throw "S3Bucket '$S3BucketName' could not be read. Please check permissions if it exists!"
+            if (-not $S3BucketName) {
+                log "Error" "[X] The S3Bucket name variable was not defined. Please check the variables you provided in your RFC!"
+            } elseif (Get-S3Object -Region $S3Region -BucketName $S3BucketName) {
+                Read-S3Object -Region $S3Region -BucketName $S3BucketName -KeyPrefix $S3BucketFolder -Folder $LocalScriptFolder
+                log -msg "The contents of the '$S3BucketFolder' folder in the '$S3BucketName' S3Bucket have been downloaded to '$LocalScriptFolder'."
+            }
+            else {
+                log "Error" "[X] S3Bucket at '$S3BucketName' is not accessible. Please ensure that permissions are set correctly."
+            }
+
+            $installers = $(Get-ChildItem $LocalScriptFolder);
+            Write-Output "Found $($installers.Length) installers in the '$LocalScriptFolder' folder. Iterating & installing them now.";
+            foreach ($installer in $installers) {
+                Write-Output "Located '$installer'. Requesting install now."
+
+                # Launch each installer
+                switch ($installer.Extension) {
+                    ".msi" {  
+                        $arguments = "/i $installer /passive /norestart /qn"
+                        Write-Verbose "Executing: 'msiexec $arguments'"
+                        Start-Process "msiexec" -ArgumentList $arguments -Wait;
+                    }
+                    ".exe" {
+                        Write-Verbose "Executing: '& $installer'"
+                        & $installer;
+                    }
+                    default {
+                        Write-Warning "Installer extension was '$($installer.Extension)' which we cannot process. Please update Install-ApplicationPrereqs.ps1 to hande this extension."
+                    }
                 }
             }
 
-            # Installation of Rewrite Module
-            $arguments = "/i $OfflineInstaller /passive /norestart /qn /LAME "".\install_rewritemodule.log"""
-            Write-Verbose "Executing: 'msiexec $arguments'"
-            Start-Process "msiexec" -ArgumentList $arguments -Wait
-
-
-            Write-Output "All done. Windows features enabled & URL Rewrite module is installed."
+            Write-Output "All done. Windows features enabled & installers executed."
         }
         catch {
             Write-Error "An error occurred that could not be automatically resolved: $_"
