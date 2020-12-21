@@ -20,7 +20,7 @@
 
 .DESCRIPTION
  Enables a bunch of additional Windows Features in the build, and then 
- downloads the URL Rewrite module (from S3) and installs it.
+ downloads the additional installers (from S3) and installs each of them.
 
 .INPUTS
  None
@@ -89,8 +89,8 @@ function Install-ApplicationPrereqs {
                         Write-Output "Finished executing 'msiexec $arguments'.";
                     }
                     ".exe" {
-                        Write-Output "Executing: '& ""$($installer.FullName)""'"
-                        & "$($installer.FullName)" | Out-Host;
+                        Write-Output "Executing: '& ""$($installer.FullName)"" /passive /norestart'"
+                        & "$($installer.FullName)" /passive /norestart | Out-Host;
                         Write-Output "Finished executing '& ""$($installer.FullName)""'.";
                     }
                     default {
