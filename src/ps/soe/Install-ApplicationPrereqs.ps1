@@ -36,19 +36,18 @@ function Install-ApplicationPrereqs {
     BEGIN {
         Write-Verbose "=> '$PSCommandPath' has started.";
 
-        # .NET 4.8 & Core - Enable Windows Features
+        # Enable Windows Features
         $features = "Web-Server;Web-Mgmt-Tools;" + # IIS & Administration
                     "Net-Framework-Features;Net-Framework-Core;" + # .NET Framework 3.5
                     "Net-Framework-45-Features;Net-Framework-45-Core;Net-Framework-45-ASPNET;Net-WCF-Services45;" + # .NET Framework 4.x
-                    "Web-App-Dev;Web-Net-Ext;Web-Net-Ext45;Web-Asp-Net;Web-Asp-Net45;Web-ISAPI-Ext;Web-ISAPI-Filter;" + # App Development Role
+                    "Web-App-Dev;Web-Net-Ext;Web-Net-Ext45;Web-Asp-Net;Web-Asp-Net45;Web-ISAPI-Ext;Web-ISAPI-Filter;Web-CGI;" + # App Development Role
                     "Web-Windows-Auth;Web-Basic-Auth;" + # Windows + Basic Authentication inside IIS
-                    "Web-Dyn-Compression;Web-Http-Redirect;Web-Includes;Web-Custom-Logging;Web-Http-Tracing;Web-Request-Monitor;" + # Additional IIS features
-                    "Web-CGI;" # Application functionality
+                    "Web-Dyn-Compression;Web-Http-Redirect;Web-Includes;Web-Custom-Logging;Web-Http-Tracing;Web-Request-Monitor" # Additional IIS features
 
         # Installable dependencies
         $S3Region =  "eu-west-1"
         $S3BucketName = $ENV:PenguinInfraBucketName
-        $S3BucketFolder = "soe\installers\app-prerequisites"
+        $S3BucketFolder = "soe/installers/app-prerequisites"
         $LocalScriptFolder = "C:\Configuration\installers"
     }
 
@@ -65,30 +64,34 @@ function Install-ApplicationPrereqs {
             }
 
             if (-not $S3BucketName) {
-                log "Error" "[X] The S3Bucket name variable was not defined. Please check the variables you provided in your RFC!"
+                Write-Error "[X] The S3Bucket name variable was not defined. Please check the variables you provided in your RFC!"
             } elseif (Get-S3Object -Region $S3Region -BucketName $S3BucketName) {
-                Read-S3Object -Region $S3Region -BucketName $S3BucketName -KeyPrefix $S3BucketFolder -Folder $LocalScriptFolder
-                log -msg "The contents of the '$S3BucketFolder' folder in the '$S3BucketName' S3Bucket have been downloaded to '$LocalScriptFolder'."
+                Write-Output "Downloading the contents of the '$S3BucketFolder' folder from the '$S3BucketName' S3Bucket to '$LocalScriptFolder'."
+                Read-S3Object -Region $S3Region -BucketName $S3BucketName -KeyPrefix $S3BucketFolder -Folder $LocalScriptFolder;
+                Write-Output "The contents of the '$S3BucketFolder' folder in the '$S3BucketName' S3Bucket have been downloaded to '$LocalScriptFolder'."
             }
             else {
-                log "Error" "[X] S3Bucket at '$S3BucketName' is not accessible. Please ensure that permissions are set correctly."
+                Write-Error "[X] S3Bucket at '$S3BucketName' is not accessible. Please ensure that permissions are set correctly."
             }
 
-            $installers = $(Get-ChildItem $LocalScriptFolder);
+            $installers = $(Get-ChildItem $LocalScriptFolder -File);
             Write-Output "Found $($installers.Length) installers in the '$LocalScriptFolder' folder. Iterating & installing them now.";
             foreach ($installer in $installers) {
-                Write-Output "Located '$installer'. Requesting install now."
+                Write-Output "Located '$($installer.FullName)'. Requesting install now."
 
                 # Launch each installer
                 switch ($installer.Extension) {
                     ".msi" {  
-                        $arguments = "/i $installer /passive /norestart /qn"
-                        Write-Verbose "Executing: 'msiexec $arguments'"
+                        $arguments = "/i ""$($installer.FullName)"" /passive /norestart /qn "
+                        $arguments += "IACCEPTMSODBCSQLLICENSETERMS=YES" # Add any additional/custom args here
+                        Write-Output "Executing: 'msiexec $arguments'"
                         Start-Process "msiexec" -ArgumentList $arguments -Wait;
+                        Write-Output "Finished executing 'msiexec $arguments'.";
                     }
                     ".exe" {
-                        Write-Verbose "Executing: '& $installer'"
-                        & $installer;
+                        Write-Output "Executing: '& ""$($installer.FullName)""'"
+                        & "$($installer.FullName)" | Out-Host;
+                        Write-Output "Finished executing '& ""$($installer.FullName)""'.";
                     }
                     default {
                         Write-Warning "Installer extension was '$($installer.Extension)' which we cannot process. Please update Install-ApplicationPrereqs.ps1 to hande this extension."
