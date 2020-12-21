@@ -95,8 +95,6 @@ function Install-NessusAgent {
         $S3Region =  "eu-west-1"
         $S3BucketName = $ENV:PenguinInfraBucketName
         $S3BucketObject = (Join-Path "soe\installers" $DownloadedNessusAgent)
-        
-        Write-Output "All EnvVar Keys: $(Get-ChildItem ENV: | ForEach-Object { Write-Output $_.Key })"
     }
 
     PROCESS {
