@@ -76,20 +76,35 @@ function Invoke-CustomerProvidedScripts {
                 Write-Verbose "Execution of configuration script '$($script.FullName)' completed.";
             }
 
-            # EXTRA STEP - Add HTTPS to each site (except the 'Default Web Site')
+            # Create self-signed certificate & add it to root cert store
+            $DomainName = "*.covermore.co.uk";
+            New-SelfSignedCertificate -DnsName $DomainName -CertStoreLocation "cert:\LocalMachine\My"
+            Write-Output "Created new self-signed certificate for DnsName '$DomainName'."
+            $cert = (Get-Childitem "cert:\LocalMachine\My" | Where-Object Subject -like "$DomainName*").Thumbprint
+            Write-Output "Located certificate with thumbprint '$cert'. Moving to Root store."
+            Move-Item -path "cert:\LocalMachine\My\$cert" -Destination "cert:\LocalMachine\Root\" -Verbose
+            Write-Output "Certificate ('$cert') has been added to the Root store.";
+
+            # Add HTTPS to each site (except the 'Default Web Site')
             Import-Module WebAdministration;
             foreach ($site in $(Get-ChildItem IIS:\Sites | Where-Object Name -ne "Default Web Site")) {
                 $siteName = $site.Name;
                 New-WebBinding -Name "$siteName" -IpAddress "*" -Protocol "https" -Port 443 -HostHeader "$siteName"
                 Write-Output "New HTTPS binding has been added to '$siteName'."
+                # For some reason the return object for 'new-webbinding' is not the same as the return object from 'get-webbinding'!?
+                (Get-WebBinding -Name "$siteName" -Protocol "https" -Port 443 -HostHeader "$siteName").AddSslCertificate($cert, "Root")
+                Write-Output "HTTPS binding for '$siteName' has been updated to use the self-signed certificate '$cert'.";
+            }
 
-                # EXTRA EXTRA STEP - Add Windows Auth & disable Anonymous access for all sites
+            # Add Windows Auth & disable Anonymous access for *-crm.covermore.co.uk
+            foreach ($site in $(Get-ChildItem IIS:\Sites | Where-Object Name -like "*-crm.covermore.co.uk")) {
+                $siteName = $site.Name;
                 Set-WebConfigurationProperty -Filter "/system.webServer/security/authentication/anonymousAuthentication" -Name "Enabled" -Value "False" -PSPath "IIS:\" -Location "$siteName"
                 Write-Output "Disabled anonymous authentication for '$siteName'."
                 Set-WebConfigurationProperty -Filter "/system.webServer/security/authentication/windowsAuthentication" -Name "Enabled" -Value "True" -PSPath "IIS:\" -Location "$siteName"
                 Write-Output "Enabled Windows authentication for '$siteName'."
             }
-
+            
         }
         catch {
             Write-Error "An error occurred that could not be automatically resolved: $_"
