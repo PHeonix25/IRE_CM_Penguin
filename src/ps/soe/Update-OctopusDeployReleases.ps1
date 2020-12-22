@@ -144,7 +144,6 @@ function Update-OctopusDeployReleases {
             Write-Output "The environmentId for the '$EnvironmentName' environment is '$environmentId'."
 
             foreach ($name in ($ProjectName -split ';')) { 
-
                 $projects = (Invoke-RestMethod "$OctopusServerUrl/api/$spaceId/projects?name=$([System.Web.HTTPUtility]::UrlEncode($name))&skip=0&take=1" -Headers $header)
                 $projectId = $projects.Items[0].Id
                 Write-Output "The projectId for '$name' is '$projectId'."
@@ -193,7 +192,7 @@ function Update-OctopusDeployReleases {
                             Write-Error "Redeployment of '$name' errored. Please check your OctopusDeploy Server logs for failure reason, fix that, and try again." 
                         }
                     } else {
-                        Write-Output "Deployment is still active... Checking again in 15 seconds."
+                        Write-Output "Deployment task '$taskId' for project '$name' is still active... Checking again in 15 seconds."
                         Start-Sleep -Seconds 15
                     }
                 }  
