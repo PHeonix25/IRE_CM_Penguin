@@ -114,14 +114,21 @@ function Invoke-CustomerProvidedScripts {
                 }
             }
 
-            # Add Windows Auth & disable Anonymous access for *-crm.covermore.co.uk
+            # Add Forms auth for *-crm.covermore.co.uk
             foreach ($site in $(Get-ChildItem IIS:\Sites | Where-Object Name -like "*-crm.covermore.co.uk")) {
+                $siteName = $site.Name;
+                Set-WebConfigurationProperty -Filter "/system.webServer/security/authentication/formsAuthentication" -Name "Enabled" -Value "True" -PSPath "IIS:\" -Location "$siteName"
+                Write-Output "Enabled Forms Authentication for '$siteName'."
+            }
+            # Add Windows auth for *-login.crm.covermore.co.uk
+            foreach ($site in $(Get-ChildItem IIS:\Sites | Where-Object Name -like "*-login.crm.covermore.co.uk")) {
                 $siteName = $site.Name;
                 Set-WebConfigurationProperty -Filter "/system.webServer/security/authentication/anonymousAuthentication" -Name "Enabled" -Value "False" -PSPath "IIS:\" -Location "$siteName"
                 Write-Output "Disabled anonymous authentication for '$siteName'."
                 Set-WebConfigurationProperty -Filter "/system.webServer/security/authentication/windowsAuthentication" -Name "Enabled" -Value "True" -PSPath "IIS:\" -Location "$siteName"
-                Write-Output "Enabled Windows authentication for '$siteName'."
+                Write-Output "Enabled Windows Authentication for '$siteName'."
             }
+            
             
         }
         catch {
