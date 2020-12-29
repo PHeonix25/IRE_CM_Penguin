@@ -82,8 +82,8 @@ function Invoke-CustomerProvidedScripts {
             Write-Output "Created new self-signed certificate for DnsName '$DomainName'."
             $cert = (Get-ChildItem "cert:\LocalMachine\My" | Where-Object Subject -like "$DomainName*").Thumbprint
             Write-Output "Located certificate with thumbprint '$cert'. Moving to Root store."
-            Copy-Item "cert:\LocalMachine\My\$cert" -Destination "cert:\LocalMachine\Root\" -Verbose
-            Write-Output "Certificate ('$cert') has been copied to the Root store.";
+            Move-Item "cert:\LocalMachine\My\$cert" -Destination "cert:\LocalMachine\Root\"
+            Write-Output "Certificate ('$cert') has been moved to the Root store.";
 
             Import-Module WebAdministration;
             $hostsFilePath = "$($ENV:WinDir)\system32\Drivers\etc\hosts"
@@ -110,7 +110,7 @@ function Invoke-CustomerProvidedScripts {
                 } else {
                     Write-Output "Adding '$hostEntry' to hostsfile..."
                     Add-Content -Path $hostsFilePath -Encoding "utf8" -Value $hostEntry;
-                    Write-Host "'$hostEntry' has been added to the hostsfile."
+                    Write-Host "Success! '$hostEntry' has been added to the hostsfile."
                 }
             }
 
