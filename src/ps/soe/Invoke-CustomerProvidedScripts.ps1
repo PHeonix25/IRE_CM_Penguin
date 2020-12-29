@@ -116,19 +116,18 @@ function Invoke-CustomerProvidedScripts {
 
             # Add Forms auth for *-crm.covermore.co.uk
             foreach ($site in $(Get-ChildItem IIS:\Sites | Where-Object Name -like "*-crm.covermore.co.uk")) {
-                $siteName = $site.Name;
-                Set-WebConfigurationProperty -Filter "/system.webServer/security/authentication/formsAuthentication" -Name "Enabled" -Value "True" -PSPath "IIS:\" -Location "$siteName"
-                Write-Output "Enabled Forms Authentication for '$siteName'."
+                $config = Get-WebConfiguration -Filter "system.web/authentication" -PSPath "IIS:\" -Location "$($site.Name)"
+                $config.mode = "Forms"
+                $config | Set-WebConfiguration -Filter "system.web/authentication" -PSPath "IIS:\" -Location "$($site.Name)"
+                Write-Output "Enabled Forms Authentication for '$($site.Name)'."
             }
-            # Add Windows auth for *-login.crm.covermore.co.uk
-            foreach ($site in $(Get-ChildItem IIS:\Sites | Where-Object Name -like "*-login.crm.covermore.co.uk")) {
-                $siteName = $site.Name;
-                Set-WebConfigurationProperty -Filter "/system.webServer/security/authentication/anonymousAuthentication" -Name "Enabled" -Value "False" -PSPath "IIS:\" -Location "$siteName"
-                Write-Output "Disabled anonymous authentication for '$siteName'."
-                Set-WebConfigurationProperty -Filter "/system.webServer/security/authentication/windowsAuthentication" -Name "Enabled" -Value "True" -PSPath "IIS:\" -Location "$siteName"
-                Write-Output "Enabled Windows Authentication for '$siteName'."
+            # Add Windows auth & disable anonymous auth for *-login.covermore.co.uk
+            foreach ($site in $(Get-ChildItem IIS:\Sites | Where-Object Name -like "*-login.covermore.co.uk")) {
+                Set-WebConfigurationProperty -Filter "/system.webServer/security/authentication/anonymousAuthentication" -Name "Enabled" -Value "False" -PSPath "IIS:\" -Location "$($site.Name)"
+                Write-Output "Disabled Anonymous Authentication for '$($site.Name)'."
+                Set-WebConfigurationProperty -Filter "/system.webServer/security/authentication/windowsAuthentication" -Name "Enabled" -Value "True" -PSPath "IIS:\" -Location "$($site.Name)"
+                Write-Output "Enabled Windows Authentication for '$($site.Name)'."
             }
-            
             
         }
         catch {
