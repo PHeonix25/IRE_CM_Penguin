@@ -39,7 +39,7 @@ function Install-ApplicationPrereqs {
         # Enable Windows Features
         $features = "Web-Server;Web-Mgmt-Tools;" + # IIS & Administration
                     "Net-Framework-Features;Net-Framework-Core;" + # .NET Framework 3.5
-                    "Net-Framework-45-Features;Net-Framework-45-Core;Net-Framework-45-ASPNET;Net-WCF-Services45;" + # .NET Framework 4.x
+                    "Net-Framework-45-Features;Net-Framework-45-Core;Net-Framework-45-ASPNET;Net-WCF-Services45;NET-WCF-HTTP-Activation45;" + # .NET Framework 4.x
                     "Web-App-Dev;Web-Net-Ext;Web-Net-Ext45;Web-Asp-Net;Web-Asp-Net45;Web-ISAPI-Ext;Web-ISAPI-Filter;Web-CGI;" + # App Development Role
                     "Web-Windows-Auth;Web-Basic-Auth;" + # Windows + Basic Authentication inside IIS
                     "Web-Dyn-Compression;Web-Http-Redirect;Web-Includes;Web-Custom-Logging;Web-Http-Tracing;Web-Request-Monitor" # Additional IIS features
