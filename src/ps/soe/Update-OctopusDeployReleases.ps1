@@ -130,6 +130,46 @@ function Update-OctopusDeployReleases {
         }
         
         $header = @{ "X-Octopus-ApiKey" = $OctopusServerApiKey }
+
+        $DeploymentRequests = @();
+
+        function Start-Deployment {
+            [CmdletBinding()] param ($requestObject)
+            try {
+                $taskId = (Invoke-RestMethod $requestObject.Url -Headers $requestObject.Headers -Method $requestObject.Method -Body $requestObject.Body -ContentType $requestObject.ContentType).TaskId; 
+                Write-Verbose "Deployment task '$taskId' for project '$($requestObject.ProjectName)' has started."
+                return $taskId;
+            }
+            catch {
+                # Occasionally the Cover-More developers create releases without actually deploying them into environments. 
+                # When you do this, the API gets confused when you ask it to "redeploy" the release.
+                # This catch block will ignore projects that have been created, but not (yet?) deployed into this environment.
+                Write-Warning "Requesting a re-deployment of '$($requestObject.ProjectName)' failed with the following response: $_";
+                return $null;
+            }
+        }
+        function Wait-Deployment { 
+            [CmdletBinding()] param ([string]$ServerUrl, $Headers, [string]$TaskId, [string]$ProjectName)
+
+            $finished = $false;
+            try {
+                while (-not $finished) {
+                    $task = (Invoke-RestMethod "$ServerUrl/api/tasks/$TaskId/details?verbose=false" -Headers $Headers).Task;
+                    if ($task.IsCompleted) {
+                        $finished = $true;
+                    } else {
+                        Write-Verbose "PROGRESS: Deployment task '$TaskId' for project '$ProjectName' is still active... Checking again in 15 seconds.";
+                        Start-Sleep 15;
+                    }   
+                }
+                Write-Information "COMPLETE: Deployment task '$TaskId' for project '$ProjectName' has finished. Status was '$($task.State)'.";
+                if ($task.State -eq "Failed") {
+                    Write-Error "FAILURE: Deployment task '$TaskId' for project '$ProjectName' errored. Please check your OctopusDeploy Server logs for failure reason, fix that, and try again."
+                }
+            } catch {
+                Write-Error "An error occurred while checking deployment status: $_"
+            }
+        }
     }
 
     PROCESS {
@@ -137,20 +177,20 @@ function Update-OctopusDeployReleases {
 
             $machine = (Invoke-RestMethod "$OctopusServerUrl/api/$spaceId/machines/all" -Headers $header) | Where-Object { $_.Name -eq $TentacleName };
             $machineId = $machine.Id
-            Write-Output "The machineId for this machine ('$TentacleName') is '$machineId'."
+            Write-Information "The machineId for this machine ('$TentacleName') is '$machineId'."
             
             $environments = (Invoke-RestMethod "$OctopusServerUrl/api/$spaceId/environments?name=$([System.Web.HTTPUtility]::UrlEncode($EnvironmentName))&skip=0&take=1" -Headers $header)
             $environmentId = $environments.Items[0].Id
-            Write-Output "The environmentId for the '$EnvironmentName' environment is '$environmentId'."
+            Write-Information "The environmentId for the '$EnvironmentName' environment is '$environmentId'."
 
             foreach ($name in ($ProjectName -split ';')) { 
                 $projects = (Invoke-RestMethod "$OctopusServerUrl/api/$spaceId/projects?name=$([System.Web.HTTPUtility]::UrlEncode($name))&skip=0&take=1" -Headers $header)
                 $projectId = $projects.Items[0].Id
-                Write-Output "The projectId for '$name' is '$projectId'."
+                Write-Information "The projectId for '$name' is '$projectId'."
 
                 $deployments = (Invoke-RestMethod "$OctopusServerUrl/api/$spaceId/deployments?projects=$projectId&environments=$environmentId&skip=0&take=1" -Headers $header)
                 $releaseId = $deployments.Items[0].ReleaseId
-                Write-Output "The most recent release for '$name' in the '$EnvironmentName' environment is '$releaseId'."
+                Write-Information "The most recent release for '$name' in the '$EnvironmentName' environment is '$releaseId'."
 
                 $body = @{
                     EnvironmentId = "$environmentId"
@@ -167,38 +207,31 @@ function Update-OctopusDeployReleases {
                     UseGuidedFailure = $false
                 } | ConvertTo-Json
 
-                Write-Output "Requesting re-deployment of the latest release ($releaseId) of the '$name' project (aka $projectId) in this environment ($environmentId), filtered to this machine ($machineId)."
-                $deploymentIsActive = $false
-                $deploymentState = 'NotRequested'
+                Write-Information "Building request to redeploy the latest release ($releaseId) of the '$name' project (aka $projectId) in this environment ($environmentId), filtered to this machine ($machineId)."
 
-                try {
-                    $taskId = (Invoke-RestMethod "$OctopusServerUrl/api/$spaceId/deployments" -Headers $header -Method Post -Body $body -ContentType "application/json").TaskId; 
-                    $deploymentIsActive = $true
-                }
-                catch {
-                    # Occasionally the Cover-More developers create releases without actually deploying them into environments. 
-                    # When you do this, the API gets confused when you ask it to "redeploy" the release.
-                    # This catch block will ignore projects that have been created, but not (yet?) deployed into this environment.
-                    Write-Warning "Requesting a re-deployment failed with the following response: $_";
+                $requestObject = @{ 
+                    Url = "$OctopusServerUrl/api/$spaceId/deployments"
+                    Body = $body
+                    Headers = $header
+                    Method = "Post"
+                    ContentType = "application/json"
+                    ProjectName = $name
                 }
 
-                while ($deploymentIsActive) {
-                    $deploymentTask = (Invoke-RestMethod "$OctopusServerUrl/api/tasks/$taskId/details?verbose=false" -Headers $header).Task;
-                    $deploymentState = $deploymentTask.State
-
-                    if ($deploymentTask.IsCompleted) {
-                        $deploymentIsActive = $false
-                        if ($deploymentState -eq "Failed") {
-                            Write-Error "Redeployment of '$name' errored. Please check your OctopusDeploy Server logs for failure reason, fix that, and try again." 
-                        }
-                    } else {
-                        Write-Output "Deployment task '$taskId' for project '$name' is still active... Checking again in 15 seconds."
-                        Start-Sleep -Seconds 15
-                    }
-                }  
-                
-                Write-Output "Redeployment of '$name' has finished. Status was '$deploymentState'."
+                $DeploymentRequests += $requestObject;
             }
+
+            foreach ($request in $DeploymentRequests) {
+                $taskId = Start-Deployment $request;
+                Start-Sleep 2; # Avoid spamming the server
+                if ($null -ne $taskId) {
+                    Start-Job ${function:Wait-Deployment} -ArgumentList $OctopusServerUrl, $header, $taskId, $request.ProjectName -Verbose -InformationAction Continue `
+                    | Out-Null # We don't care for the individual job report
+                }
+            }
+            
+            Get-Job | Receive-Job -Wait;
+            Write-Information "All deployment jobs are completed.";
         }
         catch {
             Write-Error "An error occurred that could not be automatically resolved: $_"
