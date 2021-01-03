@@ -35,14 +35,7 @@
 #> 
 function Update-WebsiteConfiguration {
     [CmdletBinding()]
-    param (
-        [Alias("project")][string]$ProjectName, 
-        [Alias("env")][string]$EnvironmentName,
-        [string]$OctopusServerApiKey,
-        [string]$OctopusServerUrl,
-        [string]$SpaceId = "Spaces-1",
-        [string]$TentacleName
-    )
+    param ()
     
     BEGIN {
         Write-Verbose "=> '$PSCommandPath' has started.";
@@ -65,10 +58,12 @@ function Update-WebsiteConfiguration {
 
             $hostsFilePath = "$($ENV:WinDir)\system32\Drivers\etc\hosts"
             $hostsFile = Get-Content $hostsFilePath;
+
+            # Loop through every configured site, except the "Default Web Site"
             foreach ($site in $(Get-ChildItem IIS:\Sites | Where-Object Name -ne "Default Web Site")) {
                 $siteName = $site.Name;
 
-                # Add HTTPS to each site (except the 'Default Web Site')
+                # Add HTTPS to each site
                 New-WebBinding -Name "$siteName" -IpAddress "*" -Protocol "https" -Port 443 -HostHeader "$siteName"
                 Write-Output "New HTTPS binding has been added to '$siteName'."
                 # For some reason the return object for 'new-webbinding' is not the same as the return object from 'get-webbinding'!?
@@ -89,14 +84,6 @@ function Update-WebsiteConfiguration {
                     Add-Content -Path $hostsFilePath -Encoding "utf8" -Value $hostEntry;
                     Write-Host "Success! '$hostEntry' has been added to the hostsfile."
                 }
-            }
-
-            # Add Forms Auth for *-crm.covermore.co.uk
-            foreach ($crmSite in $(Get-ChildItem IIS:\Sites | Where-Object Name -like "*-crm.covermore.co.uk")) {
-                $config = Get-WebConfiguration -Filter "system.web/authentication" -PSPath "IIS:\" -Location "$($crmSite.Name)"
-                $config.mode = "Forms"
-                $config | Set-WebConfiguration -Filter "system.web/authentication" -PSPath "IIS:\" -Location "$($crmSite.Name)"
-                Write-Output "Enabled Forms Authentication for '$($crmSite.Name)'."
             }
 
             # Add Windows Auth & disable Anonymous Auth for *-login.covermore.co.uk
