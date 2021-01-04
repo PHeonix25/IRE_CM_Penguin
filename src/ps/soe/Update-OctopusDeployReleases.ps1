@@ -132,6 +132,7 @@ function Update-OctopusDeployReleases {
         $header = @{ "X-Octopus-ApiKey" = $OctopusServerApiKey }
 
         $DeploymentRequests = @();
+        $DeploymentJobs = @();
 
         function Start-Deployment {
             [CmdletBinding()] param ($requestObject)
@@ -158,13 +159,13 @@ function Update-OctopusDeployReleases {
                     if ($task.IsCompleted) {
                         $finished = $true;
                     } else {
-                        Write-Verbose "PROGRESS: Deployment task '$TaskId' for project '$ProjectName' is still active... Checking again in 15 seconds.";
+                        Write-Information "PROGRESS: Deployment task '$TaskId' for project '$ProjectName' is still active... Checking again in 15 seconds.";
                         Start-Sleep 15;
                     }   
                 }
                 Write-Information "COMPLETE: Deployment task '$TaskId' for project '$ProjectName' has finished. Status was '$($task.State)'.";
                 if ($task.State -eq "Failed") {
-                    Write-Error "FAILURE: Deployment task '$TaskId' for project '$ProjectName' errored. Please check your OctopusDeploy Server logs for failure reason, fix that, and try again."
+                    Write-Warning "WARNING: Deployment task '$TaskId' for project '$ProjectName' was marked as Failed. Please check your OctopusDeploy Server logs for failure reason, fix that, and try again."
                 }
             } catch {
                 Write-Error "An error occurred while checking deployment status: $_"
@@ -225,17 +226,17 @@ function Update-OctopusDeployReleases {
                 $taskId = Start-Deployment $request;
                 Start-Sleep 2; # Avoid spamming the server
                 if ($null -ne $taskId) {
-                    Start-Job ${function:Wait-Deployment} -ArgumentList $OctopusServerUrl, $header, $taskId, $request.ProjectName -Verbose -InformationAction Continue `
-                    | Out-Null # We don't care for the individual job report
+                    $DeploymentJobs += Start-Job ${function:Wait-Deployment} -ArgumentList $OctopusServerUrl, $header, $taskId, $request.ProjectName -InformationAction Continue 
                 }
             }
             
-            Get-Job | Receive-Job -Wait;
-            Write-Information "All deployment jobs are completed.";
+            while ($DeploymentJobs.HasMoreData -and $DeploymentJobs.State -eq "Running") {
+                Receive-Job -Job $DeploymentJobs # This allows us to 'tail' the running jobs
+            }
+            Write-Information "All deployment jobs are completed!";
         }
         catch {
-            Write-Error "An error occurred that could not be automatically resolved: $_"
-            throw $_;
+            Write-Error "An error occurred that could not be automatically resolved: $_";
         }
     }
 
